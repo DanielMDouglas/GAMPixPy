@@ -127,8 +127,9 @@ class PointSource (Generator):
                                                               ]])
         charge_values = torch.tensor(self.n_samples_per_point*[self.q_init/self.n_samples_per_point,
                                                                ])                                 
+        charge_pdg = -1*torch.ones_like(charge_values)
         
-        return tracks.Track(charge_4vec, charge_values)
+        return tracks.Track(charge_4vec, charge_values, charge_pdg)
 
     def get_meta(self):
         """
@@ -337,8 +338,9 @@ class LineSource (Generator):
                                                             end_4vec,
                                                             dx, dQ,
                                                             )
-
-        return tracks.Track(charge_4vec, charge_values)
+        charge_pdg = -1*torch.ones_like(charge_values)
+        
+        return tracks.Track(charge_4vec, charge_values, charge_pdg)
 
     def get_meta(self):
         """
