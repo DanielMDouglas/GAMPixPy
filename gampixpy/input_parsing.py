@@ -132,6 +132,7 @@ class SegmentParser (InputParser):
     
     def do_point_sampling(self, start_4vec, end_4vec,
                           dx, charge_per_segment,
+                          pdg_per_segment,
                           sample_density = 1.e-1,
                           sample_normalization = 'charge',
                           **kwargs):
@@ -156,6 +157,8 @@ class SegmentParser (InputParser):
             Length array for the image segments.
         charge_per_segment : array-like
             Charge per segment array for the image segments.
+        pdg_per_segment : array-like
+            PDG code of segments with the array for this image.
         sample_density : float
             Density of samples.  Exact interpretation depends upon the
             normalization method specified.
@@ -177,6 +180,8 @@ class SegmentParser (InputParser):
             Interpolated ionization time along the input segments.
         charges : array-like[float]
             Charge values for each interpolated point.
+        pdg : array-like[float]
+            PDG codes for each interpolated point.
         
         """
 
@@ -198,8 +203,9 @@ class SegmentParser (InputParser):
         sample_position = sample_4vec[:,:3]
         sample_time = sample_4vec[:,3]
         sample_charge = torch.repeat_interleave(charge_per_segment/samples_per_segment, samples_per_segment)
-
-        return sample_position, sample_time, sample_charge
+        sample_pdg = torch.repeat_interleave(pdg_per_segment, samples_per_segment)
+        
+        return sample_position, sample_time, sample_charge, sample_pdg
 
 class RooTrackerParser (SegmentParser):
     """
@@ -240,9 +246,23 @@ class RooTrackerParser (SegmentParser):
     def _get_G4_sample(self, sample_index, **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
+        # Get track-level info 
+        traj_id = torch.empty((0))
+        traj_pdg = torch.empty((0))
+        for trajectory in self.event.Trajectories:
+            this_traj_id = torch.tensor([trajectory.GetTrackId()])
+            this_traj_pdg = torch.tensor([trajectory.GetPDGCode()])
+            
+            traj_id = torch.cat((this_traj_id,
+                                 traj_id))
+            traj_pdg = torch.cat((this_traj_pdg,
+                                 traj_pdg))
+        
+        # Get segment-level info 
         start_4vec = torch.empty((0,4))
         end_4vec = torch.empty((0,4))
         dE = torch.empty((0))
+        pdg = torch.empty((0))
 
         for container_name, hit_segments in self.event.SegmentDetectors:
             for segment in hit_segments:
@@ -256,6 +276,8 @@ class RooTrackerParser (SegmentParser):
                                               segment.GetStop().Z()*mm,
                                               segment.GetStop().T()*ns])
                 this_dE = torch.tensor([segment.GetEnergyDeposit()*MeV])
+                parent_id = list(segment.Contrib)[0]
+                this_pdg = traj_pdg[traj_id == parent_id]
                 
                 start_4vec = torch.cat((this_start_4vec[None,:],
                                         start_4vec))
@@ -263,19 +285,23 @@ class RooTrackerParser (SegmentParser):
                                       end_4vec))
                 dE = torch.cat((this_dE,
                                 dE))
+                pdg = torch.cat((this_pdg,
+                                 pdg))
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sum(displacement**2, dim = 1)
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             **kwargs
-                                                                             )
-        
-        return Track(charge_position, charge_time, charge_values)
+        points = self.do_point_sampling(start_4vec,
+                                        end_4vec,
+                                        dx, dQ,
+                                        pdg,
+                                        **kwargs
+                                        )
+
+        charge_position, charge_time, charge_values, charge_pdg = points
+        return Track(charge_position, charge_time, charge_values, charge_pdg)
 
     def _get_G4_meta(self, sample_index, **kwargs):
         primary_vertex = self.event.Primaries[0] # assume only one primary for now
@@ -382,18 +408,21 @@ class EdepSimParser (SegmentParser):
                                  event_segments['t_end']*ns,
                                  )).T
         dE = torch.tensor(event_segments['dE']*MeV)
+        pdg = torch.tensor(event_segments['pdgId'])
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sum(displacement**2, dim = 1)
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             **kwargs
-                                                                             )
-        return Track(charge_position, charge_time, charge_values)
+        points = self.do_point_sampling(start_4vec,
+                                        end_4vec,
+                                        dx, dQ,
+                                        pdg,
+                                        **kwargs
+                                        )
+        charge_position, charge_time, charge_values, charge_pdg = points
+        return Track(charge_position, charge_time, charge_values, charge_pdg)
     
     def _get_edepsim_meta(self, sample_index, **kwargs):
         trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
@@ -526,9 +555,10 @@ class MarleyParser (SegmentParser):
                                                 segment_array))
 
         charge_per_segment = self.do_recombination(segment_array)
-        charge_position, charge_time, charge_values = self.do_point_sampling(segment_array, charge_per_segment)
-
-        return Track(charge_position, charge_time, charge_values)
+        points = self.do_point_sampling(segment_array, charge_per_segment)
+        charge_position, charge_time, charge_values, charge_pdg = points
+        
+        return Track(charge_position, charge_time, charge_values, charge_pdg)
 
     def _get_G4_meta(self, sample_index):
         meta_array = np.array([(sample_index,
@@ -627,6 +657,7 @@ class MarleyCSVParser (SegmentParser):
                                   ("z_end", "f4"),
                                   ("t_end", "f4"),
                                   ("dE", "f4"),
+                                  ("pdgCode", "i4"),
                                   ("dx", "f4"),
                                   ("dEdx", "f4")],
                                  align = True)
@@ -641,17 +672,19 @@ class MarleyCSVParser (SegmentParser):
                                  event_rows['endT']*ns)).T
         
         dE = torch.tensor(event_rows['dE']*MeV)
+        pdg = torch.tensor(event_rows['pdgCode']*MeV)
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sum(displacement**2, dim = 1)
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             )
-        return Track(charge_position, charge_time, charge_values)
+        points = self.do_point_sampling(start_4vec,
+                                        end_4vec,
+                                        dx, dQ, pdg,
+                                        )
+        charge_position, charge_time, charge_values, charge_pdg = points
+        return Track(charge_position, charge_time, charge_values, charge_pdg)
 
     def _get_CSV_meta(self, sample_index):
         event_mask = self.data_table['event'] == sample_index

@@ -30,10 +30,11 @@ class Track:
     CoarseTileSample : Data class for tile hits.
     
     """
-    def __init__(self, sample_position, sample_time, sample_charge):
+    def __init__(self, sample_position, sample_time, sample_charge, sample_pdg):
         self.raw_track = {'position': sample_position,
                           'time': sample_time,
-                          'charge': sample_charge}
+                          'charge': sample_charge,
+                          'pdg': sample_pdg}
 
         self.drifted_track = {}
 
