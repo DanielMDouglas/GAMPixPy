@@ -38,12 +38,16 @@ class InputParser:
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
     """
-    def __init__(self, input_filename, sequential_sampling = True, physics_config = default_physics_params):
+    def __init__(self, input_filename,
+                 position_offset = [0, 0, 0],
+                 sequential_sampling = True,
+                 physics_config = default_physics_params):
         self.physics_config = physics_config
         
         self.input_filename = input_filename
 
         self.sampling_order = []
+        self.global_position_offset = torch.tensor(position_offset)
 
         self._open_file_handle()
         self._generate_sample_order(sequential_sampling)
@@ -237,7 +241,7 @@ class RooTrackerParser (SegmentParser):
         else:
             self.sampling_order = torch.randperm(self.n_images)
 
-    def _get_G4_segments(self, sample_index, **kwargs):
+    def _get_G4_segments(self, sample_index, position_offset = None, **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
         traj_id = torch.empty((0))
@@ -291,7 +295,7 @@ class RooTrackerParser (SegmentParser):
 
         return start_pos, end_pos, start_time, end_time, dE, pdgid
             
-    def _get_G4_sample(self, sample_index, **kwargs):
+    def _get_G4_sample(self, sample_index, position_offset = None, **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
         start_4vec = torch.empty((0,4))
@@ -328,8 +332,14 @@ class RooTrackerParser (SegmentParser):
                                                                              dx, dQ,
                                                                              **kwargs
                                                                              )
-        
-        return Track(charge_position, charge_time, charge_values)
+
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+            
+        return Track(charge_position + offset,
+                     charge_time,
+                     charge_values)
 
     def _get_G4_meta(self, sample_index, **kwargs):
         primary_vertex = self.event.Primaries[0] # assume only one primary for now
@@ -450,7 +460,10 @@ class EdepSimParser (SegmentParser):
         else:
             self.sampling_order = torch.tensor(unique_event_ids[torch.randperm(self.n_images)])
 
-    def _get_edepsim_segments(self, sample_index, pdg_selection=None, **kwargs):
+    def _get_edepsim_segments(self, sample_index,
+                              pdg_selection=None,
+                              position_offset = None,
+                              **kwargs):
         segment_mask = self.file_handle['segments']['eventID'] == sample_index
         if pdg_selection:
             event_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
@@ -476,7 +489,10 @@ class EdepSimParser (SegmentParser):
 
         return start_pos, end_pos, start_time, end_time, dE, pdgid
             
-    def _get_edepsim_event(self, sample_index, pdg_selection=None, **kwargs):
+    def _get_edepsim_event(self, sample_index,
+                           pdg_selection=None,
+                           position_offset = None,
+                           **kwargs):
         segment_mask = self.file_handle['segments']['eventID'] == sample_index
         if pdg_selection:
             event_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
@@ -509,7 +525,13 @@ class EdepSimParser (SegmentParser):
                                                                              dx, dQ,
                                                                              **kwargs
                                                                              )
-        return Track(charge_position, charge_time, charge_values)
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+            
+        return Track(charge_position + offset,
+                     charge_time,
+                     charge_values)
     
     def _get_edepsim_meta(self, sample_index, **kwargs):
         trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
@@ -632,7 +654,10 @@ class MarleyParser (SegmentParser):
                                                    len(unique_event_ids),
                                                    replace = False)
     
-    def _get_G4_sample(self, sample_index):
+    def _get_G4_sample(self, sample_index
+                       position_offset = None,
+                       **kwargs,
+                       ):
         segment_dtype = np.dtype([("x_start", "f4"),
                                   ("y_start", "f4"),
                                   ("z_start", "f4"),
@@ -678,9 +703,16 @@ class MarleyParser (SegmentParser):
         charge_per_segment = self.do_recombination(segment_array)
         charge_position, charge_time, charge_values = self.do_point_sampling(segment_array, charge_per_segment)
 
-        return Track(charge_position, charge_time, charge_values)
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+            
+        return Track(charge_position + offset,
+        ,
+                     charge_time,
+                     charge_values)
 
-    def _get_G4_meta(self, sample_index):
+    def _get_G4_meta(self, sample_index, **kwargs):
         meta_array = np.array([(sample_index,
                                 -1, # KE undefined
                                 -1, # charge undefined
@@ -691,7 +723,7 @@ class MarleyParser (SegmentParser):
                               dtype = meta_dtype)
         return meta_array
 
-    def get_sample(self, index):
+    def get_sample(self, index, **kwargs):
         """
         parser.get_sample(index, **kwargs)
 
@@ -708,9 +740,9 @@ class MarleyParser (SegmentParser):
             Return the loaded image as a point-sampled track object.
         
         """
-        return self.get_G4_sample(index)
+        return self.get_G4_sample(index, **kwargs)
 
-    def get_meta(self, index):
+    def get_meta(self, index, **kwargs):
         """
         parser.get_meta(index, **kwargs)
 
@@ -728,7 +760,7 @@ class MarleyParser (SegmentParser):
             of this array is defined in meta_dtype, above.
         
         """
-        return self.get_G4_meta(index)
+        return self.get_G4_meta(index, **kwargs)
 
 class MarleyCSVParser (SegmentParser):
     def _open_file_handle(self):
@@ -764,7 +796,10 @@ class MarleyCSVParser (SegmentParser):
         else:
             self.sampling_order = torch.tensor(unique_event_ids[torch.randperm(len(unique_event_ids))])
 
-    def _get_CSV_sample(self, sample_index):
+    def _get_CSV_sample(self, sample_index,
+                        position_offset = None,
+                        **kwargs,
+                        ):
         event_mask = self.data_table['event'] == sample_index
         event_rows = self.data_table[event_mask]
         
@@ -801,9 +836,15 @@ class MarleyCSVParser (SegmentParser):
                                                                              end_4vec,
                                                                              dx, dQ,
                                                                              )
-        return Track(charge_position, charge_time, charge_values)
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+            
+        return Track(charge_position + offset,
+                     charge_time,
+                     charge_values)
 
-    def _get_CSV_meta(self, sample_index):
+    def _get_CSV_meta(self, sample_index, **kwargs):
         event_mask = self.data_table['event'] == sample_index
         event_rows = self.data_table[event_mask]
 
@@ -823,7 +864,7 @@ class MarleyCSVParser (SegmentParser):
                               dtype = meta_dtype)
         return meta_array
 
-    def get_sample(self, index):
+    def get_sample(self, index, **kwargs):
         """
         parser.get_sample(index, **kwargs)
 
@@ -840,9 +881,9 @@ class MarleyCSVParser (SegmentParser):
             Return the loaded image as a point-sampled track object.
         
         """
-        return self._get_CSV_sample(index)
+        return self._get_CSV_sample(index, **kwargs)
 
-    def get_meta(self, index):
+    def get_meta(self, index, **kwargs):
         """
         parser.get_meta(index, **kwargs)
 
@@ -860,7 +901,7 @@ class MarleyCSVParser (SegmentParser):
             of this array is defined in meta_dtype, above.
         
         """
-        return self._get_CSV_meta(index)
+        return self._get_CSV_meta(index, **kwargs)
 
 class PenelopeParser (InputParser):
     # def __init__(self, *args, **kwargs):
@@ -874,14 +915,21 @@ class PenelopeParser (InputParser):
         # Sampling is trivial
         self.sampling_order = [0]
         
-    def _get_penelope_sample(self):
+    def _get_penelope_sample(self, position_offset = None, **kwargs):
         charge_position = torch.tensor(self.file_handle['r']).T
         charge_values = torch.tensor(self.file_handle['num_e'])
         charge_time = torch.zeros_like(charge_values)
         
-        return Track(charge_position, charge_time, charge_values)
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+            
+        return Track(charge_position + offset,
+        ,
+                     charge_time,
+                     charge_values)
 
-    def _get_penelope_meta(self):
+    def _get_penelope_meta(self, **kwargs):
         # is the only available metadata for these energy in the filename?
         primary_energy = self.input_filename.split('/')[-1].split('_')[0][6:]
         try:
@@ -899,7 +947,7 @@ class PenelopeParser (InputParser):
                               dtype = meta_dtype)
         return meta_array
 
-    def get_sample(self, index):
+    def get_sample(self, index, **kwargs):
         """
         parser.get_sample(index, **kwargs)
 
@@ -916,9 +964,9 @@ class PenelopeParser (InputParser):
             Return the loaded image as a point-sampled track object.
         
         """
-        return self._get_penelope_sample()
+        return self._get_penelope_sample(**kwargs)
     
-    def get_meta(self, index):
+    def get_meta(self, index, **kwargs):
         """
         parser.get_meta(index, **kwargs)
 
