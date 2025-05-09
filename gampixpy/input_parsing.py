@@ -341,12 +341,18 @@ class RooTrackerParser (SegmentParser):
                      charge_time,
                      charge_values)
 
-    def _get_G4_meta(self, sample_index, **kwargs):
+    def _get_G4_meta(self, sample_index,
+                     position_offset = None,
+                     **kwargs):
         primary_vertex = self.event.Primaries[0] # assume only one primary for now
 
-        vertex_x = primary_vertex.GetPosition().X()*mm
-        vertex_y = primary_vertex.GetPosition().Y()*mm
-        vertex_z = primary_vertex.GetPosition().Z()*mm
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+
+        vertex_x = primary_vertex.GetPosition().X()*mm + offset[0]
+        vertex_y = primary_vertex.GetPosition().Y()*mm + offset[1]
+        vertex_z = primary_vertex.GetPosition().Z()*mm + offset[2]
         
         primary_trajectory = self.event.Trajectories[0]
         assert primary_trajectory.GetParentId() == -1
@@ -533,7 +539,9 @@ class EdepSimParser (SegmentParser):
                      charge_time,
                      charge_values)
     
-    def _get_edepsim_meta(self, sample_index, **kwargs):
+    def _get_edepsim_meta(self, sample_index,
+                          position_offset = None,
+                          **kwargs):
         trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
         primary_trajectory = event_trajectories[event_trajectories['parentID'] == -1]
@@ -543,7 +551,11 @@ class EdepSimParser (SegmentParser):
         momentum = primary_trajectory['pxyz_start'] # MeV/c
         kinetic_energy = np.sqrt(np.power(mass, 2) + np.sum(np.power(momentum, 2))) - mass
 
-        vertex = primary_trajectory['xyz_start'][0]
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
+
+        vertex = primary_trajectory['xyz_start'][0] + offset
         init_momentum = primary_trajectory['pxyz_start'][0]
 
         theta = np.arctan2(init_momentum[1], init_momentum[0])
@@ -711,7 +723,8 @@ class MarleyParser (SegmentParser):
                      charge_time,
                      charge_values)
 
-    def _get_G4_meta(self, sample_index, **kwargs):
+    def _get_G4_meta(self, sample_index,
+                     **kwargs):
         meta_array = np.array([(sample_index,
                                 -1, # KE undefined
                                 -1, # charge undefined
@@ -843,7 +856,9 @@ class MarleyCSVParser (SegmentParser):
                      charge_time,
                      charge_values)
 
-    def _get_CSV_meta(self, sample_index, **kwargs):
+    def _get_CSV_meta(self, sample_index,
+                      position_offset = None,
+                      **kwargs):
         event_mask = self.data_table['event'] == sample_index
         event_rows = self.data_table[event_mask]
 
@@ -852,11 +867,17 @@ class MarleyCSVParser (SegmentParser):
         vertex = [-1, -1, -1]
         theta = -1
         phi = -1
+
+        offset = self.global_position_offset
+        if position_offset:
+            offset += torch.tensor(position_offset)
         
         meta_array = np.array([(sample_index,
                                 kinetic_energy,
                                 charge, # charge undefined
-                                vertex[0], vertex[1], vertex[2],
+                                vertex[0] + offset[0],
+                                vertex[1] + offset[1],
+                                vertex[2] + offset[2],
                                 theta, phi,
                                 -1, # primary length undefined
                                 )],
@@ -927,14 +948,15 @@ class PenelopeParser (InputParser):
                      charge_time,
                      charge_values)
 
-    def _get_penelope_meta(self, **kwargs):
+    def _get_penelope_meta(self,
+                           **kwargs):
         # is the only available metadata for these energy in the filename?
         primary_energy = self.input_filename.split('/')[-1].split('_')[0][6:]
         try:
             primary_energy = float(primary_energy)*MeV
         except ValueError:
             primary_energy = -1
-
+        
         meta_array = np.array([(-1, # sample index (undefined)
                                 primary_energy, # primary kinetic energy
                                 -1, # charge (undefined)
