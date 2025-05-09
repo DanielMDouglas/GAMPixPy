@@ -654,7 +654,7 @@ class MarleyParser (SegmentParser):
                                                    len(unique_event_ids),
                                                    replace = False)
     
-    def _get_G4_sample(self, sample_index
+    def _get_G4_sample(self, sample_index,
                        position_offset = None,
                        **kwargs,
                        ):
@@ -708,7 +708,6 @@ class MarleyParser (SegmentParser):
             offset += torch.tensor(position_offset)
             
         return Track(charge_position + offset,
-        ,
                      charge_time,
                      charge_values)
 
@@ -925,7 +924,6 @@ class PenelopeParser (InputParser):
             offset += torch.tensor(position_offset)
             
         return Track(charge_position + offset,
-        ,
                      charge_time,
                      charge_values)
 
