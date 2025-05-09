@@ -346,9 +346,9 @@ class RooTrackerParser (SegmentParser):
                      **kwargs):
         primary_vertex = self.event.Primaries[0] # assume only one primary for now
 
-        offset = self.global_position_offset
+        offset = np.array(self.global_position_offset)
         if position_offset:
-            offset += torch.tensor(position_offset)
+            offset += np.array(position_offset)
 
         vertex_x = primary_vertex.GetPosition().X()*mm + offset[0]
         vertex_y = primary_vertex.GetPosition().Y()*mm + offset[1]
@@ -551,9 +551,9 @@ class EdepSimParser (SegmentParser):
         momentum = primary_trajectory['pxyz_start'] # MeV/c
         kinetic_energy = np.sqrt(np.power(mass, 2) + np.sum(np.power(momentum, 2))) - mass
 
-        offset = self.global_position_offset
+        offset = np.array(self.global_position_offset)
         if position_offset:
-            offset += torch.tensor(position_offset)
+            offset += np.array(position_offset)
 
         vertex = primary_trajectory['xyz_start'][0] + offset
         init_momentum = primary_trajectory['pxyz_start'][0]
@@ -957,7 +957,7 @@ class PenelopeParser (InputParser):
         except ValueError:
             primary_energy = -1
         
-        meta_array = np.array([(-1, # sample index (undefined)
+        meta_array = np.array([(0, # sample index (undefined)
                                 primary_energy, # primary kinetic energy
                                 -1, # charge (undefined)
                                 0, 0, 0, # vertex position (undefined)
