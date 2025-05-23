@@ -26,6 +26,7 @@ setuptools.setup(
     install_requires=reqs,
     package_data={"gampixpy": ["*_config/*.yaml"]},
     dependency_links=links,
+    license_files=["LICENSE"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
