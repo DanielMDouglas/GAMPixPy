@@ -346,7 +346,7 @@ class RooTrackerParser (SegmentParser):
                      **kwargs):
         primary_vertex = self.event.Primaries[0] # assume only one primary for now
 
-        offset = np.array(self.global_position_offset)
+        offset = np.array(self.global_position_offset.cpu())
         if position_offset:
             offset += np.array(position_offset)
 
@@ -559,7 +559,7 @@ class EdepSimParser (SegmentParser):
         momentum = primary_trajectory['pxyz_start'] # MeV/c
         kinetic_energy = np.sqrt(np.power(mass, 2) + np.sum(np.power(momentum, 2))) - mass
 
-        offset = np.array(self.global_position_offset)
+        offset = np.array(self.global_position_offset.cpu())
         if position_offset:
             offset += np.array(position_offset)
 
