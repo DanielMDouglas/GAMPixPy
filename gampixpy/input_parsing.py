@@ -471,8 +471,12 @@ class EdepSimParser (SegmentParser):
                               position_offset = None,
                               **kwargs):
         segment_mask = self.file_handle['segments']['eventID'] == sample_index
-        if pdg_selection:
-            event_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
+        if type(pdg_selection) in [np.ndarray, list]:
+            pdg_selection = np.array(pdg_selection)
+            segment_mask *= np.sum(self.file_handle['segments']['pdgId'] == pdg_selection[:,None],
+                                   axis = 0, dtype = bool)
+        elif pdg_selection:
+            segment_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
         event_segments = self.file_handle['segments'][segment_mask]
       
         trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
@@ -500,8 +504,12 @@ class EdepSimParser (SegmentParser):
                            position_offset = None,
                            **kwargs):
         segment_mask = self.file_handle['segments']['eventID'] == sample_index
-        if pdg_selection:
-            event_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
+        if type(pdg_selection) in [np.ndarray, list]:
+            pdg_selection = np.array(pdg_selection)
+            segment_mask *= np.sum(self.file_handle['segments']['pdgId'] == pdg_selection[:,None],
+                                   axis = 0, dtype = bool)
+        elif pdg_selection:
+            segment_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
         event_segments = self.file_handle['segments'][segment_mask]
       
         trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index

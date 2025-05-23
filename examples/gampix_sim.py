@@ -45,6 +45,11 @@ def main(args):
     input_parser = input_parsing.parser_dict[args.input_format](args.input_file)
 
     event_data = input_parser.get_sample(args.event_index)
+    # can also filter segments from the input to keep only specific pdg codes
+    # (from an array or a singleton)
+    # event_data = input_parser.get_sample(args.event_index, pdg_selection = 13)
+    # event_data = input_parser.get_sample(args.event_index, pdg_selection = [11, 13, 22])
+
     event_meta = input_parser.get_meta(args.event_index)
 
     # call the detector sim in two steps:
