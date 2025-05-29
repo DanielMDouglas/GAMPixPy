@@ -195,10 +195,13 @@ class SegmentParser (InputParser):
 
         sample_start = torch.repeat_interleave(start_4vec, samples_per_segment, dim = 0)
         sample_interval = torch.repeat_interleave(segment_interval, samples_per_segment, dim = 0)
-        sample_parametric_distance = torch.cat(tuple(torch.linspace(0, 1, samples_per_segment[i])
-                                                     for i in range(samples_per_segment.shape[0])))
-        sample_4vec = sample_start + sample_interval*sample_parametric_distance[:,None]
-
+        if torch.any(samples_per_segment):
+            sample_parametric_distance = torch.cat(tuple(torch.linspace(0, 1, samples_per_segment[i])
+                                                         for i in range(samples_per_segment.shape[0])))
+            sample_4vec = sample_start + sample_interval*sample_parametric_distance[:,None]
+        else:
+            sample_4vec = torch.empty((0, 4))
+            
         sample_position = sample_4vec[:,:3]
         sample_time = sample_4vec[:,3]
         sample_charge = torch.repeat_interleave(charge_per_segment/samples_per_segment, samples_per_segment)
