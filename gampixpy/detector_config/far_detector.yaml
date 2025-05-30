@@ -1,0 +1,22 @@
+anode:
+  z: -650
+
+boundaries:
+  x_lower_bound:
+    value: -3000
+    unit: cm
+  x_upper_bound:
+    value: 3000
+    unit: cm
+  y_lower_bound:
+    value: -675
+    unit: cm
+  y_upper_bound:
+    value: 675
+    unit: cm
+  z_lower_bound:
+    value: -650
+    unit: cm
+  z_upper_bound:
+    value: 650
+    unit: cm
