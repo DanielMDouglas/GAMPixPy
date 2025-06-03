@@ -623,7 +623,9 @@ class GAMPixModel (ReadoutModel):
             discrim_charge = torch.sum(interval_charge)+torch.poisson(torch.tensor(self.readout_config['pixels']['noise']).float())
             threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
             if discrim_charge > threshold:
-                measured_charge = interval_charge + torch.poisson(self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
+                measured_charge = interval_charge
+                if not nonoise:
+                    measured_charge += torch.poisson(self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
                 
                 for this_timestamp, this_measured_charge in zip(time_ticks, measured_charge):
                     this_z = this_timestamp*1.6e5
