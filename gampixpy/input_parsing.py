@@ -301,12 +301,27 @@ class RooTrackerParser (SegmentParser):
 
         return start_pos, end_pos, start_time, end_time, dE, pdgid
             
-    def _get_G4_sample(self, sample_index, position_offset = None, **kwargs):
+    def _get_G4_sample(self, sample_index,
+                       pdg_selection = None,
+                       position_offset = None,
+                       **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
+
+        traj_id = torch.empty((0))
+        traj_pdg = torch.empty((0))
+        for trajectory in self.event.Trajectories:
+            this_traj_id = torch.tensor([trajectory.GetTrackId()])
+            this_traj_pdg = torch.tensor([trajectory.GetPDGCode()])
+
+            traj_id = torch.cat((this_traj_id,
+                                 traj_id))
+            traj_pdg = torch.cat((this_traj_pdg,
+                                 traj_pdg))
 
         start_4vec = torch.empty((0,4))
         end_4vec = torch.empty((0,4))
         dE = torch.empty((0))
+        pdgid = torch.empty((0))
 
         for container_name, hit_segments in self.event.SegmentDetectors:
             for segment in hit_segments:
@@ -320,13 +335,25 @@ class RooTrackerParser (SegmentParser):
                                               segment.GetStop().Z()*mm,
                                               segment.GetStop().T()*ns])
                 this_dE = torch.tensor([segment.GetEnergyDeposit()*MeV])
-                
+
+                parent_id = list(segment.Contrib)[0]
+                this_pdgid = traj_pdg[traj_id == parent_id]
+
+                if type(pdg_selection) in [np.ndarray, list]:
+                    if not this_pdgid.item() in pdg_selection:
+                        continue
+                elif pdg_selection:
+                    if this_pdgid.item() != pdg_selection:
+                        continue
+
                 start_4vec = torch.cat((this_start_4vec[None,:],
                                         start_4vec))
                 end_4vec = torch.cat((this_end_4vec[None,:],
                                       end_4vec))
                 dE = torch.cat((this_dE,
                                 dE))
+                pdgid = torch.cat((this_pdgid,
+                                   pdgid))
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sqrt(torch.sum(displacement**2, dim = 1))
