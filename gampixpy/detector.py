@@ -36,8 +36,11 @@ class ReadoutModel:
     LArPixModel : Sub-class implementing a LArPix-like hit-finding scheme.    
 
     """
-    def __init__(self, readout_config = default_readout_params):
+    def __init__(self,
+                 readout_config = default_readout_params,
+                 physics_config = default_physics_params):
         self.readout_config = readout_config
+        self.physics_config = physics_config
         self.clock_start_time = 0
 
     def electronics_simulation(self, track, verbose = True, **kwargs):
@@ -563,9 +566,10 @@ class GAMPixModel (ReadoutModel):
                 if torch.any(threshold_crossing_mask):
                     hit_index = threshold_crossing_mask.nonzero()[0][0]
                     
-                    threshold_crossing_t = time_ticks[hit_index]
-                    threshold_crossing_z = threshold_crossing_t*1.6e5 # is there a better way to do this?
-                    # TODO: also, get that from physics params
+                    threshold_crossing_t = time_ticks[hit_index] 
+
+                    # is there a better way to do this?
+                    threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
                     
                     threshold_crossing_charge = window_charge[hit_index]
                     if not nonoise:
@@ -628,7 +632,7 @@ class GAMPixModel (ReadoutModel):
                     measured_charge += torch.poisson(self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
                 
                 for this_timestamp, this_measured_charge in zip(time_ticks, measured_charge):
-                    this_z = this_timestamp*1.6e5
+                    this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
                     hits.append(PixelSample(pixel_center,
                                             this_timestamp.item(),
                                             this_z.item(),
@@ -722,9 +726,10 @@ class LArPixModel (ReadoutModel):
                     hit_index = threshold_crossing_mask.nonzero()[0][0]
                     
                     threshold_crossing_t = time_ticks[hit_index]
-                    threshold_crossing_z = threshold_crossing_t*1.6e5 # is there a better way to do this?
-                    # TODO: also, get that from physics params
-                    
+
+                    # is there a better way to do this?
+                    threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed'] 
+                
                     threshold_crossing_charge = window_charge[hit_index]
                     if not nonoise:
                         threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
@@ -796,7 +801,10 @@ class LArPixModel (ReadoutModel):
                     hit_index = threshold_crossing_mask.nonzero()[0][0]
 
                     threshold_crossing_t = time_ticks[hit_index]
-                    threshold_crossing_z = threshold_crossing_t*1.6e5 # is there a better way to do this?
+
+                    # is there a better way to do this?
+                    threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed'] 
+
                     threshold_crossing_charge = window_charge[hit_index]
 
                     if not nonoise:
