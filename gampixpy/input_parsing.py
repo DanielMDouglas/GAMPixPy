@@ -473,16 +473,16 @@ class EdepSimParser (SegmentParser):
                               pdg_selection=None,
                               position_offset = None,
                               **kwargs):
-        segment_mask = self.file_handle['segments']['eventID'] == sample_index
+        segment_mask = self.file_handle['segments']['event_id'] == sample_index
         if type(pdg_selection) in [np.ndarray, list]:
             pdg_selection = np.array(pdg_selection)
-            segment_mask *= np.sum(self.file_handle['segments']['pdgId'] == pdg_selection[:,None],
+            segment_mask *= np.sum(self.file_handle['segments']['pdg_id'] == pdg_selection[:,None],
                                    axis = 0, dtype = bool)
         elif pdg_selection:
-            segment_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
+            segment_mask *= self.file_handle['segments']['pdg_id'] == pdg_selection
         event_segments = self.file_handle['segments'][segment_mask]
       
-        trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
+        trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
 
         start_pos = np.array([event_segments['x_start']*cm,
@@ -498,7 +498,7 @@ class EdepSimParser (SegmentParser):
         end_time = torch.tensor(event_segments['t_end']*ns)
         
         dE = torch.tensor(event_segments['dE']*MeV)
-        pdgid = torch.tensor(event_segments['pdgId'])
+        pdgid = torch.tensor(event_segments['pdg_id'])
 
         return start_pos, end_pos, start_time, end_time, dE, pdgid
             
@@ -506,16 +506,16 @@ class EdepSimParser (SegmentParser):
                            pdg_selection=None,
                            position_offset = None,
                            **kwargs):
-        segment_mask = self.file_handle['segments']['eventID'] == sample_index
+        segment_mask = self.file_handle['segments']['event_id'] == sample_index
         if type(pdg_selection) in [np.ndarray, list]:
             pdg_selection = np.array(pdg_selection)
-            segment_mask *= np.sum(self.file_handle['segments']['pdgId'] == pdg_selection[:,None],
+            segment_mask *= np.sum(self.file_handle['segments']['pdg_id'] == pdg_selection[:,None],
                                    axis = 0, dtype = bool)
         elif pdg_selection:
-            segment_mask *= self.file_handle['segments']['pdgId'] == pdg_selection
+            segment_mask *= self.file_handle['segments']['pdg_id'] == pdg_selection
         event_segments = self.file_handle['segments'][segment_mask]
       
-        trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
+        trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
 
         start_4vec = np.array([event_segments['x_start']*cm,
@@ -553,11 +553,11 @@ class EdepSimParser (SegmentParser):
     def _get_edepsim_meta(self, sample_index,
                           position_offset = None,
                           **kwargs):
-        trajectory_mask = self.file_handle['trajectories']['eventID'] == sample_index
+        trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
-        primary_trajectory = event_trajectories[event_trajectories['parentID'] == -1]
+        primary_trajectory = event_trajectories[event_trajectories['parent_id'] == -1]
 
-        pdg_code = primary_trajectory['pdgId']
+        pdg_code = primary_trajectory['pdg_id']
         mass = particle.Particle.from_pdgid(pdg_code).mass # MeV/c^2
         momentum = primary_trajectory['pxyz_start'] # MeV/c
         kinetic_energy = np.sqrt(np.power(mass, 2) + np.sum(np.power(momentum, 2))) - mass
