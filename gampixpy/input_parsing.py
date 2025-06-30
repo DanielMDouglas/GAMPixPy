@@ -461,7 +461,7 @@ class EdepSimParser (SegmentParser):
         self.file_handle = h5py.File(self.input_filename, **kwargs)
 
     def _generate_sample_order(self, sequential_sampling, **kwargs):
-        unique_event_ids = np.unique(self.file_handle['trajectories']['eventID']).astype(np.int32)
+        unique_event_ids = np.unique(self.file_handle['trajectories']['event_id']).astype(np.int32)
         # unique_event_ids = torch.tensor(unique_event_ids, dtype = torch.int32)
         self.n_images = len(unique_event_ids)
         if sequential_sampling:
@@ -556,10 +556,10 @@ class EdepSimParser (SegmentParser):
         trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
         primary_trajectory = event_trajectories[event_trajectories['parent_id'] == -1]
-
+        
         pdg_code = primary_trajectory['pdg_id']
-        mass = particle.Particle.from_pdgid(pdg_code).mass # MeV/c^2
-        momentum = primary_trajectory['pxyz_start'] # MeV/c
+        mass = particle.Particle.from_pdgid(pdg_code).mass*MeV
+        momentum = primary_trajectory['pxyz_start']*MeV
         kinetic_energy = np.sqrt(np.power(mass, 2) + np.sum(np.power(momentum, 2))) - mass
 
         offset = np.array(self.global_position_offset.cpu())
