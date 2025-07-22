@@ -1,4 +1,5 @@
 from gampixpy.tracks import Track
+from gampixpy.coordinates import CoordinateManager
 from gampixpy.config import default_physics_params
 from gampixpy.units import *
 from gampixpy.recombination import BoxRecombinationModel, BirksRecombinationModel
@@ -41,8 +42,13 @@ class InputParser:
     def __init__(self, input_filename,
                  position_offset = [0, 0, 0],
                  sequential_sampling = True,
-                 physics_config = default_physics_params):
+                 physics_config = default_physics_params,
+                 detector_config = default_detector_params):
+
         self.physics_config = physics_config
+        self.detector_config = detector_config
+
+        self.coordinate_manager = CoordinateManager(detector_config)
         
         self.input_filename = input_filename
 
