@@ -1,3 +1,5 @@
+from gampixpy.coordinates import CoordinateManager
+
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,6 +56,11 @@ class EventDisplay:
                                      linewidths=1,
                                      edgecolors=SLACplots.stanford.illuminating,
                                      alpha = 0.5)
+        self.TPC_boundary_kwargs = dict(facecolors=None,
+                                        linewidths=1,
+                                        edgecolors=SLACplots.stanford.full_palette['Black']['50%'],
+                                        linestyle = '--',
+                                        alpha = 0)
         
     def _init_fig(self):
         self.fig = plt.figure()
@@ -204,6 +211,69 @@ class EventDisplay:
         
         self.ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
 
+    def draw_box_from_corners(self, corners, **kwargs):
+        """
+        evd.draw_box_from_bounds(corners,
+                                 **kwargs)
+
+        Draw a 3D box on the axes.
+
+        Parameters
+        ----------
+        corners : list(array)
+            A list of the eight corners of the box to be drawn.
+
+        Notes
+        -----
+        Additional kwargs are passed through to Poly3DCollection
+
+        """
+        bottom_face = np.array([corners[0],
+                                corners[1],
+                                corners[3],
+                                corners[2],
+                                corners[0],
+                                ])
+        top_face = np.array([corners[4],
+                             corners[5],
+                             corners[7],
+                             corners[6],
+                             corners[4],
+                             ])
+        left_face = np.array([corners[0],
+                              corners[1],
+                              corners[5],
+                              corners[4],
+                              corners[0],
+                              ])
+        right_face = np.array([corners[2],
+                               corners[3],
+                               corners[7],
+                               corners[6],
+                               corners[2],
+                               ])
+        front_face = np.array([corners[0],
+                               corners[2],
+                               corners[6],
+                               corners[4],
+                               corners[0],
+                               ])
+        back_face = np.array([corners[1],
+                              corners[3],
+                              corners[7],
+                              corners[5],
+                              corners[1],
+                              ])
+        faces = [bottom_face,
+                 top_face,
+                 left_face,
+                 right_face,
+                 back_face,
+                 front_face,
+                 ]
+        
+        self.ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
+
     def plot_raw_track(self, **kwargs):
         """
         evd.plot_raw_track(**kwargs)
@@ -242,7 +312,7 @@ class EventDisplay:
         self.ax.set_ylabel(r'y (transverse) [cm]')
         self.ax.set_zlabel(r'z (drift) [cm]')
             
-    def plot_drifted_track(self, **kwargs):
+    def plot_drifted_track(self, detector_config, **kwargs):
         """
         evd.plot_drifted_track(**kwargs)
 
@@ -250,7 +320,10 @@ class EventDisplay:
 
         Parameters
         ----------
-        None
+        detector_config : DetectorConfig object
+            The detector config specifying the location and size of drift
+            volumes in the geometry.  This should match the readout config
+            used in the simulation step for this track.
 
         Notes
         -----
@@ -259,16 +332,19 @@ class EventDisplay:
         """
 
         n_points = self.track_object.drifted_track['position'].shape[0]
+        coordinate_manager = CoordinateManager(detector_config)
+        coords = coordinate_manager.to_experiment_coords(self.track_object.drifted_track['position'],
+                                                         self.track_object.tpc_track['TPC_index'])
         if n_points > self.MAX_POINTS_PLOTTED:
             reduction_factor = math.ceil(n_points/self.MAX_POINTS_PLOTTED)
-            xs = self.track_object.drifted_track['position'][::reduction_factor,0].cpu()
-            ys = self.track_object.drifted_track['position'][::reduction_factor,1].cpu()
-            zs = self.track_object.drifted_track['position'][::reduction_factor,2].cpu()
+            xs = coords[::reduction_factor,0].cpu()
+            ys = coords[::reduction_factor,1].cpu()
+            zs = coords[::reduction_factor,2].cpu()
             colors = np.log(self.track_object.drifted_track['charge'][::reduction_factor].cpu())
         else:
-            xs = self.track_object.drifted_track['position'][:,0].cpu()
-            ys = self.track_object.drifted_track['position'][:,1].cpu()
-            zs = self.track_object.drifted_track['position'][:,2].cpu()
+            xs = coords[:,0].cpu()
+            ys = coords[:,1].cpu()
+            zs = coords[:,2].cpu()
             colors = np.log(self.track_object.drifted_track['charge'][:].cpu())
             
         self.ax.scatter(xs, ys, zs,
@@ -452,3 +528,27 @@ class EventDisplay:
         self.ax.set_xlabel(r'x (transverse) [cm]')
         self.ax.set_ylabel(r'y (transverse) [cm]')
         self.ax.set_zlabel(r'Arrival Time [us]')
+
+    def plot_drift_volumes(self, detector_config):
+        """
+        evd.plot_drift_volumes(detector_config)
+
+        Plot the boundaries of the drift volumes as specified in a
+        detector configuration file.
+
+        Parameters
+        ----------
+        detector_config : DetectorConfig object
+            The detector config specifying the location and size of drift
+            volumes in the geometry.  This should match the readout config
+            used in the simulation step for this track.
+
+        """
+
+        for volume_name, volume_dict in detector_config['drift_volumes'].items():
+            corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
+            self.draw_box_from_corners(corners, **self.TPC_boundary_kwargs)
+
+        self.ax.set_xlabel(r'x (transverse) [cm]')
+        self.ax.set_ylabel(r'y (transverse) [cm]')
+        self.ax.set_zlabel(r'z (drift) [cm]')

@@ -1,5 +1,6 @@
 from gampixpy.config import default_detector_params, default_physics_params, default_readout_params
 from gampixpy.readout_objects import PixelSample, CoarseGridSample
+from gampixpy.coordinates import CoordinateManager
 
 import numpy as np
 import torch
@@ -38,9 +39,11 @@ class ReadoutModel:
     """
     def __init__(self,
                  readout_config = default_readout_params,
-                 physics_config = default_physics_params):
+                 physics_config = default_physics_params,
+                 detector_config = default_detector_params):
         self.readout_config = readout_config
         self.physics_config = physics_config
+        self.detector_config = detector_config
         self.clock_start_time = 0
 
     def electronics_simulation(self, track, verbose = True, **kwargs):
@@ -263,7 +266,7 @@ class ReadoutModel:
         unique_tile_indices = torch.unique(tile_ind, dim = 0)
         
         for this_tile_ind in unique_tile_indices:
-            tile_center = torch.tensor([self.readout_config['tile_volume_edges'][i][this_tile_ind[i]] + 0.5*self.readout_config['coarse_tiles']['pitch']
+            tile_center = torch.tensor([self.detector_config['tile_volume_edges'][i][this_tile_ind[i]] + 0.5*self.readout_config['coarse_tiles']['pitch']
                                         for i in range(2)])
             tile_coord = (round(float(tile_center[0]), 3),
                           round(float(tile_center[1]), 3))
@@ -844,9 +847,13 @@ class DetectorModel:
                  detector_params = default_detector_params,
                  physics_params = default_physics_params,
                  readout_params = default_readout_params):
+
         self.detector_params = detector_params
         self.physics_params = physics_params
         self.readout_params = readout_params
+
+        self.coordinate_manager = CoordinateManager(detector_params)
+        
         self.readout_model = GAMPixModel(readout_params)
         # self.readout_model = LArPixModel(readout_params)
  
@@ -879,50 +886,39 @@ class DetectorModel:
             Event data provided by an input parser or a generator.
         
         """
-        # TODO: a more complete way to describe the anode geometry
-        # i.e., specify a plane and assume drift direction is shortest
-        # path to that plane
-        # anode_z = self.detector_params['anode']['z']
-        anode_z = self.readout_params['anode']['z_lower_bound']
+        # first, translate the raw track position into tpc coordinates
+        # this translates from (x, y, z) in experimental system to
+        # (i_TPC, x, y, z) in the coordinate system of the appropriate TPC
+        # in the case when there are overlapping drift volumes (this should
+        # be avoided), those charges will have an entry for each volume
+        self.coordinate_manager.generate_tpc_coords(sampled_track)
+        
+        # z-component is the distance to the anode
+        drift_time = sampled_track.tpc_track['position'][:,2]/self.physics_params['charge_drift']['drift_speed'] # s
 
-        input_position = sampled_track.raw_track['position']
-        input_charges = sampled_track.raw_track['charge']
-
-        # position is disturbed by diffusion
-        drift_distance = input_position[:,2] - anode_z
-
-        # mask all points which are behind the anode
-        region_mask = drift_distance > 0
-        region_position = input_position[region_mask]
-        region_charges = input_charges[region_mask]
-
-        drift_distance = drift_distance[region_mask]
-
-        # TODO: implement better drift model (maybe a functional response model)
-        drift_time = drift_distance/self.physics_params['charge_drift']['drift_speed'] # s
-        # D accordint to https://lar.bnl.gov/properties/trans.html#diffusion-l
+        # D according to https://lar.bnl.gov/properties/trans.html#diffusion-l
         # sigma = sqrt(2*D*t)
 
         # use the nominal drift time to calculate diffusion
         # then, add the appropriate arrival time dispersion later
         sigma_transverse = torch.sqrt(2*self.physics_params['charge_drift']['diffusion_transverse']*drift_time)
         sigma_longitudinal = torch.sqrt(2*self.physics_params['charge_drift']['diffusion_longitudinal']*drift_time)
-                                        
+
         diffusion_sigma = torch.stack((sigma_transverse,
                                        sigma_transverse,
                                        sigma_longitudinal,
                                        )).T
-        
-        drifted_positions = torch.normal(region_position,
-                                         diffusion_sigma*torch.ones_like(region_position))
+
+        drifted_positions = torch.normal(sampled_track.tpc_track['position'],
+                                         diffusion_sigma)
 
         # charge is diminished by attenuation
-        drifted_charges = region_charges*torch.exp(-drift_time/self.physics_params['charge_drift']['electron_lifetime'])
+        drifted_charges = sampled_track.tpc_track['charge']*torch.exp(-drift_time/self.physics_params['charge_drift']['electron_lifetime'])
 
         # add dispersion to the arrival of charge due to longitudinal diffusion
-        time_dispersion = (drifted_positions[:, 2] - region_position[:, 2])/self.physics_params['charge_drift']['drift_speed'] 
+        time_dispersion = (drifted_positions[:, 2] - sampled_track.tpc_track['position'][:, 2])/self.physics_params['charge_drift']['drift_speed'] 
         
-        arrival_time = drift_time + sampled_track.raw_track['time'][region_mask] + time_dispersion
+        arrival_time = drift_time + sampled_track.tpc_track['time'] + time_dispersion
             
         # might also include a sub-sampling step?
         # in case initial sampling is not fine enough

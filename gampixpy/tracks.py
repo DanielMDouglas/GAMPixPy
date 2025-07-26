@@ -35,6 +35,7 @@ class Track:
                           'time': sample_time,
                           'charge': sample_charge}
 
+        self.tpc_track = {}
         self.drifted_track = {}
 
         self.pixel_samples = []
