@@ -2,6 +2,7 @@ from gampixpy.coordinates import CoordinateManager
 
 import math
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
@@ -164,52 +165,18 @@ class EventDisplay:
                     cell_center_xy[1] + 0.5*cell_pitch]
         z_bounds = [cell_center_z,
                     cell_center_z + cell_height]
-            
-        bottom_face = np.array([[x_bounds[0], x_bounds[0],
-                                 x_bounds[1], x_bounds[1], x_bounds[0]],
-                                [y_bounds[0], y_bounds[1],
-                                 y_bounds[1], y_bounds[0], y_bounds[0]],
-                                [z_bounds[0], z_bounds[0],
-                                 z_bounds[0], z_bounds[0], z_bounds[0]]]).T
-        top_face = np.array([[x_bounds[0], x_bounds[0],
-                              x_bounds[1], x_bounds[1], x_bounds[0]],
-                             [y_bounds[0], y_bounds[1],
-                              y_bounds[1], y_bounds[0], y_bounds[0]],
-                             [z_bounds[1], z_bounds[1],
-                              z_bounds[1], z_bounds[1], z_bounds[1]]]).T
-        left_face = np.array([[x_bounds[0], x_bounds[0],
-                               x_bounds[0], x_bounds[0], x_bounds[0]],
-                              [y_bounds[0], y_bounds[1],
-                               y_bounds[1], y_bounds[0], y_bounds[0]],
-                              [z_bounds[0], z_bounds[0],
-                               z_bounds[1], z_bounds[1], z_bounds[0]]]).T
-        right_face = np.array([[x_bounds[1], x_bounds[1],
-                                x_bounds[1], x_bounds[1], x_bounds[1]],
-                               [y_bounds[0], y_bounds[1],
-                                y_bounds[1], y_bounds[0], y_bounds[0]],
-                               [z_bounds[0], z_bounds[0],
-                                z_bounds[1], z_bounds[1], z_bounds[0]]]).T
-        back_face = np.array([[x_bounds[0], x_bounds[1],
-                               x_bounds[1], x_bounds[0], x_bounds[0]],
-                              [y_bounds[0], y_bounds[0],
-                               y_bounds[0], y_bounds[0], y_bounds[0]],
-                              [z_bounds[0], z_bounds[0],
-                               z_bounds[1], z_bounds[1], z_bounds[0]]]).T
-        front_face = np.array([[x_bounds[0], x_bounds[1],
-                                x_bounds[1], x_bounds[0], x_bounds[0]],
-                               [y_bounds[1], y_bounds[1],
-                                y_bounds[1], y_bounds[1], y_bounds[1]],
-                               [z_bounds[0], z_bounds[0],
-                                z_bounds[1], z_bounds[1], z_bounds[0]]]).T
-        faces = [bottom_face,
-                 top_face,
-                 left_face,
-                 right_face,
-                 back_face,
-                 front_face,
-                 ]
-        
-        self.ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
+
+        corners = [[x_bounds[0], y_bounds[0], z_bounds[0]],
+                   [x_bounds[0], y_bounds[1], z_bounds[0]],
+                   [x_bounds[1], y_bounds[0], z_bounds[0]],
+                   [x_bounds[1], y_bounds[1], z_bounds[0]],
+                   [x_bounds[0], y_bounds[0], z_bounds[1]],
+                   [x_bounds[0], y_bounds[1], z_bounds[1]],
+                   [x_bounds[1], y_bounds[0], z_bounds[1]],
+                   [x_bounds[1], y_bounds[1], z_bounds[1]],
+                   ]
+
+        self.draw_box_from_corners(corners, **kwargs)
 
     def draw_box_from_corners(self, corners, **kwargs):
         """
@@ -308,9 +275,9 @@ class EventDisplay:
                         **kwargs,
                         )
 
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'z (drift) [cm]')
+        self.ax.set_xlabel(r'x [cm]')
+        self.ax.set_ylabel(r'y [cm]')
+        self.ax.set_zlabel(r'z [cm]')
             
     def plot_drifted_track(self, detector_config, **kwargs):
         """
@@ -352,51 +319,51 @@ class EventDisplay:
                         **kwargs,
                         )
 
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'z (drift) [cm]')
+        self.ax.set_xlabel(r'x [cm]')
+        self.ax.set_ylabel(r'y [cm]')
+        self.ax.set_zlabel(r'z [cm]')
 
-    def plot_drifted_track_timeline(self, **kwargs):
-        """
-        evd.plot_drifted_track_timeline(**kwargs)
+    # def plot_drifted_track_timeline(self, **kwargs):
+    #     """
+    #     evd.plot_drifted_track_timeline(**kwargs)
 
-        Plot the point sample representation of the drifted track. This method
-        plots the arrival time on the z-axis instead of the true depth.
+    #     Plot the point sample representation of the drifted track. This method
+    #     plots the arrival time on the z-axis instead of the true depth.
 
-        Parameters
-        ----------
-        None
+    #     Parameters
+    #     ----------
+    #     None
 
-        Notes
-        -----
-        Additional kwargs are passed through to self.ax.scatter
+    #     Notes
+    #     -----
+    #     Additional kwargs are passed through to self.ax.scatter
 
-        """
+    #     """
 
-        n_points = self.track_object.drifted_track['position'].shape[0]
-        if n_points > self.MAX_POINTS_PLOTTED:
-            reduction_factor = math.ceil(n_points/self.MAX_POINTS_PLOTTED)
-            xs = self.track_object.drifted_track['position'][::reduction_factor,0].cpu()
-            ys = self.track_object.drifted_track['position'][::reduction_factor,1].cpu()
-            zs = self.track_object.drifted_track['time'][::reduction_factor].cpu()
-            colors = np.log(self.track_object.drifted_track['charge'][::reduction_factor].cpu())
-        else:
-            xs = self.track_object.drifted_track['position'][:,0].cpu()
-            ys = self.track_object.drifted_track['position'][:,1].cpu()
-            zs = self.track_object.drifted_track['time'][:].cpu()
-            colors = np.log(self.track_object.drifted_track['charge'][:].cpu())
+    #     n_points = self.track_object.drifted_track['position'].shape[0]
+    #     if n_points > self.MAX_POINTS_PLOTTED:
+    #         reduction_factor = math.ceil(n_points/self.MAX_POINTS_PLOTTED)
+    #         xs = self.track_object.drifted_track['position'][::reduction_factor,0].cpu()
+    #         ys = self.track_object.drifted_track['position'][::reduction_factor,1].cpu()
+    #         zs = self.track_object.drifted_track['time'][::reduction_factor].cpu()
+    #         colors = np.log(self.track_object.drifted_track['charge'][::reduction_factor].cpu())
+    #     else:
+    #         xs = self.track_object.drifted_track['position'][:,0].cpu()
+    #         ys = self.track_object.drifted_track['position'][:,1].cpu()
+    #         zs = self.track_object.drifted_track['time'][:].cpu()
+    #         colors = np.log(self.track_object.drifted_track['charge'][:].cpu())
                         
 
-        self.ax.scatter(xs, ys, zs,
-                        c = colors,
-                        **kwargs,
-                        )
+    #     self.ax.scatter(xs, ys, zs,
+    #                     c = colors,
+    #                     **kwargs,
+    #                     )
 
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'Arrival Time [us]')
+    #     self.ax.set_xlabel(r'x (transverse) [cm]')
+    #     self.ax.set_ylabel(r'y (transverse) [cm]')
+    #     self.ax.set_zlabel(r'Arrival Time [us]')
         
-    def plot_coarse_tile_measurement(self, readout_config):
+    def plot_coarse_tile_measurement(self, readout_config, physics_config, detector_config):
         """
         evd.plot_coarse_tile_measurement(readout_config)
 
@@ -408,64 +375,102 @@ class EventDisplay:
             The readout config specifying the coarse tile pitch, clock
             interval, etc.  This should match the readout config used in
             the simulation step for this track.
+        physics_config : PhysicsConfig object
+            The physics config specifying physics parameters. This should
+            match the physics config used in the simulation step for this
+            track.
+        detector_config : DetectorConfig object
+            The detector config specifying the location and size of drift
+            volumes in the geometry.  This should match the readout config
+            used in the simulation step for this track.
 
         """
 
+        coordinate_manager = CoordinateManager(detector_config)
+        
         for this_hit in self.track_object.coarse_tiles_samples:
+            cell_tpc = this_hit.coarse_cell_tpc
+            
             cell_center_xy = this_hit.coarse_cell_pos
-            # cell_center_z = this_hit.coarse_measurement_time
-            cell_center_t = this_hit.coarse_measurement_time
-            v = 1.6e5
-            cell_center_z = cell_center_t*v
+            cell_center_z = this_hit.coarse_measurement_depth
+
+            tpc_coords = torch.tensor([cell_center_xy[0],
+                                       cell_center_xy[1],
+                                       cell_center_z])
+            exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
+                                                                 cell_tpc)
+            exp_coords = exp_coords.cpu().numpy()[0]
+            
+            cell_measurement = this_hit.coarse_cell_measurement
+
+            pitch = readout_config['coarse_tiles']['pitch'],
+
+            this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+            horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
+            half_span_horizontal = horizontal_axis*pitch/2
+
+            vertical_axis = this_volume_dict['anode_vertical'].cpu().numpy()
+            half_span_vertical = vertical_axis*pitch/2
+
+            drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
+            v = physics_config['charge_drift']['drift_speed']
             cell_hit_length = v*readout_config['coarse_tiles']['clock_interval']*readout_config['coarse_tiles']['integration_length']
-            cell_measurement = this_hit.coarse_cell_measurement
+            depth_span = drift_axis*cell_hit_length
 
-            self.draw_box(cell_center_xy, cell_center_z,
-                          readout_config['coarse_tiles']['pitch'],
-                          cell_hit_length,
-                          **self.coarse_tile_hit_kwargs)
+            corners = [exp_coords - half_span_horizontal - half_span_vertical,
+                       exp_coords - half_span_horizontal + half_span_vertical,
+                       exp_coords + half_span_horizontal - half_span_vertical,
+                       exp_coords + half_span_horizontal + half_span_vertical,
+                       exp_coords - half_span_horizontal - half_span_vertical + depth_span,
+                       exp_coords - half_span_horizontal + half_span_vertical + depth_span,
+                       exp_coords + half_span_horizontal - half_span_vertical + depth_span,
+                       exp_coords + half_span_horizontal + half_span_vertical + depth_span,
+                       ]
+
+            self.draw_box_from_corners(corners,
+                                       **self.coarse_tile_hit_kwargs)
             
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'z (drift) [cm]')
+        self.ax.set_xlabel(r'x [cm]')
+        self.ax.set_ylabel(r'y [cm]')
+        self.ax.set_zlabel(r'z [cm]')
 
-    def plot_coarse_tile_measurement_timeline(self, readout_config):
-        """
-        evd.plot_coarse_tile_measurement_timeline(readout_config)
+    # def plot_coarse_tile_measurement_timeline(self, readout_config):
+    #     """
+    #     evd.plot_coarse_tile_measurement_timeline(readout_config)
 
-        Plot the simulated coarse hits for an input track. This method
-        plots the arrival time on the z-axis instead of the true depth.
+    #     Plot the simulated coarse hits for an input track. This method
+    #     plots the arrival time on the z-axis instead of the true depth.
 
-        Parameters
-        ----------
-        readout_config : ReadoutConfig object
-            The readout config specifying the coarse tile pitch, clock
-            interval, etc.  This should match the readout config used in
-            the simulation step for this track.
+    #     Parameters
+    #     ----------
+    #     readout_config : ReadoutConfig object
+    #         The readout config specifying the coarse tile pitch, clock
+    #         interval, etc.  This should match the readout config used in
+    #         the simulation step for this track.
 
-        """
+    #     """
 
-        xlim = []
-        ylim = []
-        zlim = []
+    #     xlim = []
+    #     ylim = []
+    #     zlim = []
         
-        for this_hit in self.track_object.coarse_tiles_samples:
-            cell_center_xy = this_hit.coarse_cell_pos
-            # cell_center_z = this_hit.coarse_measurement_time
-            cell_trigger_t = this_hit.coarse_measurement_time
-            cell_measurement = this_hit.coarse_cell_measurement
-            cell_hit_length = readout_config['coarse_tiles']['clock_interval']*readout_config['coarse_tiles']['integration_length']
+    #     for this_hit in self.track_object.coarse_tiles_samples:
+    #         cell_center_xy = this_hit.coarse_cell_pos
+    #         # cell_center_z = this_hit.coarse_measurement_time
+    #         cell_trigger_t = this_hit.coarse_measurement_time
+    #         cell_measurement = this_hit.coarse_cell_measurement
+    #         cell_hit_length = readout_config['coarse_tiles']['clock_interval']*readout_config['coarse_tiles']['integration_length']
 
-            self.draw_box(cell_center_xy, cell_trigger_t,
-                          readout_config['coarse_tiles']['pitch'],
-                          cell_hit_length,
-                          **self.coarse_tile_hit_kwargs)
+    #         self.draw_box(cell_center_xy, cell_trigger_t,
+    #                       readout_config['coarse_tiles']['pitch'],
+    #                       cell_hit_length,
+    #                       **self.coarse_tile_hit_kwargs)
             
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'Arrival Time [us]')
+    #     self.ax.set_xlabel(r'x [cm]')
+    #     self.ax.set_ylabel(r'y [cm]')
+    #     self.ax.set_zlabel(r'Arrival Time [us]')
         
-    def plot_pixel_measurement(self, readout_config):
+    def plot_pixel_measurement(self, readout_config, physics_config, detector_config):
         """
         evd.plot_pixel_measurement(readout_config)
 
@@ -477,57 +482,98 @@ class EventDisplay:
             The readout config specifying the coarse tile pitch, clock
             interval, etc.  This should match the readout config used in
             the simulation step for this track.
+        physics_config : PhysicsConfig object
+            The physics config specifying physics parameters. This should
+            match the physics config used in the simulation step for this
+            track.
+        detector_config : DetectorConfig object
+            The detector config specifying the location and size of drift
+            volumes in the geometry.  This should match the readout config
+            used in the simulation step for this track.
 
         """
-        
+
+        coordinate_manager = CoordinateManager(detector_config)
+
         for this_hit in self.track_object.pixel_samples:
+            cell_tpc = this_hit.pixel_tpc
+            
             cell_center_xy = this_hit.pixel_pos
-            cell_center_t = this_hit.hit_timestamp
-            v = 1.6e5
-            cell_center_z = cell_center_t*v
+            cell_center_z = this_hit.hit_depth
+
+            tpc_coords = torch.tensor([cell_center_xy[0],
+                                       cell_center_xy[1],
+                                       cell_center_z,
+                                       ])
+
+            exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
+                                                                 cell_tpc)
+            exp_coords = exp_coords.cpu().numpy()[0]
+
             cell_measurement = this_hit.hit_measurement
+
+            pitch = readout_config['pixels']['pitch'],
+
+            this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+            horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
+            half_span_horizontal = horizontal_axis*pitch/2
+
+            vertical_axis = this_volume_dict['anode_vertical'].cpu().numpy()
+            half_span_vertical = vertical_axis*pitch/2
+
+            drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
+            v = physics_config['charge_drift']['drift_speed']
             cell_hit_length = v*readout_config['pixels']['clock_interval']*readout_config['pixels']['integration_length']
+            depth_span = drift_axis*cell_hit_length
+
+            corners = [exp_coords - half_span_horizontal - half_span_vertical,
+                       exp_coords - half_span_horizontal + half_span_vertical,
+                       exp_coords + half_span_horizontal - half_span_vertical,
+                       exp_coords + half_span_horizontal + half_span_vertical,
+                       exp_coords - half_span_horizontal - half_span_vertical + depth_span,
+                       exp_coords - half_span_horizontal + half_span_vertical + depth_span,
+                       exp_coords + half_span_horizontal - half_span_vertical + depth_span,
+                       exp_coords + half_span_horizontal + half_span_vertical + depth_span,
+                       ]
             
-            self.draw_box(cell_center_xy, cell_center_z,
-                          readout_config['pixels']['pitch'],
-                          cell_hit_length,
-                          **self.pixel_hit_kwargs)
+            self.draw_box_from_corners(corners,
+                                       **self.pixel_hit_kwargs)
             
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'z (drift) [cm]')
+        self.ax.set_xlabel(r'x [cm]')
+        self.ax.set_ylabel(r'y [cm]')
+        self.ax.set_zlabel(r'z [cm]')
 
-    def plot_pixel_measurement_timeline(self, readout_config):
-        """
-        evd.plot_pixel_measurement_timeline(readout_config)
+    # def plot_pixel_measurement_timeline(self, readout_config):
+    #     """
+    #     evd.plot_pixel_measurement_timeline(readout_config)
 
-        Plot the simulated pixel hits for an input track. This method
-        plots the arrival time on the z-axis instead of the true depth.
+    #     Plot the simulated pixel hits for an input track. This method
+    #     plots the arrival time on the z-axis instead of the true depth.
 
-        Parameters
-        ----------
-        readout_config : ReadoutConfig object
-            The readout config specifying the coarse tile pitch, clock
-            interval, etc.  This should match the readout config used in
-            the simulation step for this track.
+    #     Parameters
+    #     ----------
+    #     readout_config : ReadoutConfig object
+    #         The readout config specifying the coarse tile pitch, clock
+    #         interval, etc.  This should match the readout config used in
+    #         the simulation step for this track.
 
-        """
+    #     """
         
-        for this_hit in self.track_object.pixel_samples:
-            cell_center_xy = this_hit.pixel_pos
-            # cell_center_z = this_hit.hit_timestamp
-            cell_trigger_t = this_hit.hit_timestamp
-            cell_measurement = this_hit.hit_measurement
-            cell_hit_length = readout_config['pixels']['clock_interval']*readout_config['pixels']['integration_length']
+    #     for this_hit in self.track_object.pixel_samples:
+    #         cell_center_xy = this_hit.pixel_pos
+    #         # cell_center_z = this_hit.hit_timestamp
+    #         cell_trigger_t = this_hit.hit_timestamp
+    #         cell_measurement = this_hit.hit_measurement
+    #         cell_hit_length = readout_config['pixels']['clock_interval']*readout_config['pixels']['integration_length']
             
-            self.draw_box(cell_center_xy, cell_trigger_t,
-                          readout_config['pixels']['pitch'],
-                          cell_hit_length,
-                          **self.pixel_hit_kwargs)
+    #         self.draw_box(cell_center_xy, cell_trigger_t,
+    #                       readout_config['pixels']['pitch'],
+    #                       cell_hit_length,
+    #                       **self.pixel_hit_kwargs)
             
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'Arrival Time [us]')
+    #     self.ax.set_xlabel(r'x (transverse) [cm]')
+    #     self.ax.set_ylabel(r'y (transverse) [cm]')
+    #     self.ax.set_zlabel(r'Arrival Time [us]')
 
     def plot_drift_volumes(self, detector_config):
         """
