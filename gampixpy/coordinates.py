@@ -16,6 +16,7 @@ class CoordinateManager:
 
         self.rotation = 0
 
+        # dictionaries for translating from volume name stings to an internal index
         self.index_to_volume = {i: volume_name
                                 for i, volume_name
                                 in enumerate(self.detector_config['drift_volumes'].keys())}
@@ -101,8 +102,9 @@ class CoordinateManager:
             # choose an arbitrary corner.  Which one doesn't matter, but it should be
             # between 0 and 7 (a rectangular prism has 8 vertices)
             reference_corner_index = 0
-            reference_corner = volume_dict['corners'][reference_corner_index]
-            connected_corners = volume_dict['corners'][volume_dict['connectivity'][reference_corner_index]]
+            corners = volume_dict['corners']
+            reference_corner = corners[reference_corner_index]
+            connected_corners = corners[volume_dict['connectivity'][reference_corner_index]]
 
             leg_vec = connected_corners - reference_corner
             leg_dists = torch.linalg.norm(leg_vec, axis = 1)
@@ -150,7 +152,7 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
         
-        tpc_index = torch.empty((0,))
+        tpc_index = torch.empty((0,), dtype = torch.uint8)
         tpc_coords = torch.empty((0,3))
         tpc_time = torch.empty((0,))
         tpc_charge = torch.empty((0,))

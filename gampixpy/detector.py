@@ -44,6 +44,9 @@ class ReadoutModel:
         self.readout_config = readout_config
         self.physics_config = physics_config
         self.detector_config = detector_config
+
+        self.coordinate_manager = CoordinateManager(detector_config)
+
         self.clock_start_time = 0
 
     def electronics_simulation(self, track, verbose = True, **kwargs):
@@ -106,8 +109,8 @@ class ReadoutModel:
 
         Parameters
         ----------
-        tile_coord : tuple(float, float)
-            The (x, y) (anode) coordinates of a given tile.
+        tile_coord : tuple(int, float, float)
+            The (i_tpc, x, y) (anode) coordinates of a given tile.
         track : Track object
             A track which has already had drift applied.
         sample_mask : array-like[bool]
@@ -131,21 +134,22 @@ class ReadoutModel:
 
         # sum(result[1,:,:], dim = -1) == track.drifted_track['charge']
         
-
         position = track.drifted_track['position'][sample_mask]
+        tpc_index = track.tpc_track['TPC_index'][sample_mask]
         charge = track.drifted_track['charge'][sample_mask]
         time = track.drifted_track['time'][sample_mask]
         pitch = self.readout_config['coarse_tiles']['pitch']
         
-        lands_on_tile_of_interest = position[:,0] - tile_coord[0] > -0.5*pitch
-        lands_on_tile_of_interest *= position[:,0] - tile_coord[0] < 0.5*pitch
-        lands_on_tile_of_interest *= position[:,1] - tile_coord[1] > -0.5*pitch
-        lands_on_tile_of_interest *= position[:,1] - tile_coord[1] < 0.5*pitch
+        lands_on_tile_of_interest = position[:,0] - tile_coord[1] > -0.5*pitch
+        lands_on_tile_of_interest *= position[:,0] - tile_coord[1] < 0.5*pitch
+        lands_on_tile_of_interest *= position[:,1] - tile_coord[2] > -0.5*pitch
+        lands_on_tile_of_interest *= position[:,1] - tile_coord[2] < 0.5*pitch
 
         induced_charge = torch.where(lands_on_tile_of_interest,
                                      charge,
                                      torch.zeros(1),
                                      )
+        
         return torch.stack((time, induced_charge))[:,:,None] 
     
     def compose_tile_currents(self, sparse_current_series):
@@ -202,8 +206,8 @@ class ReadoutModel:
 
         Parameters
         ----------
-        tile_coord : tuple(float, float)
-            The (x, y) (anode) coordinates of a given tile.
+        tile_coord : tuple(int, float, float)
+            The (i_tpc, x, y) (anode) coordinates of a given tile.
         track : Track object
             A track which has already had drift applied.
         n_neighbor_tiles : int
@@ -221,10 +225,10 @@ class ReadoutModel:
         position = track.drifted_track['position']
         pitch = self.readout_config['coarse_tiles']['pitch']
 
-        sample_mask = position[:,0] - tile_coord[0] > -(n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,0] - tile_coord[0] <= (n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,1] - tile_coord[1] > -(n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,1] - tile_coord[1] <= (n_neighbor_tiles + 0.5)*pitch
+        sample_mask = position[:,0] - tile_coord[1] > -(n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,0] - tile_coord[1] <= (n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,1] - tile_coord[2] > -(n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,1] - tile_coord[2] <= (n_neighbor_tiles + 0.5)*pitch
 
         return sample_mask 
 
@@ -246,37 +250,31 @@ class ReadoutModel:
             some charge.
         
         """
-        min_tile = torch.tensor([self.readout_config['anode']['x_lower_bound'],
-                                 self.readout_config['anode']['y_lower_bound'],
-                                 ])
-        spacing = self.readout_config['coarse_tiles']['pitch']
-        tile_ind = torch.floor(torch.div(track.drifted_track['position'][:,:2] - min_tile, spacing)).int()
-
-        inside_anode_mask = (torch.min(tile_ind, axis = -1)[0] >= 0) 
-        inside_anode_mask *= tile_ind[:, 0] < self.readout_config['n_tiles_x'] 
-        inside_anode_mask *= tile_ind[:, 1] < self.readout_config['n_tiles_y']
-
-        tile_ind = tile_ind[inside_anode_mask]
-
-        z_series = track.drifted_track['position'][inside_anode_mask,2]
-        t_series = track.drifted_track['time'][inside_anode_mask]
-        charge_series = track.drifted_track['charge'][inside_anode_mask]
-
         coarse_grid_timeseries = {}
-        unique_tile_indices = torch.unique(tile_ind, dim = 0)
-        
-        for this_tile_ind in unique_tile_indices:
-            tile_center = torch.tensor([self.detector_config['tile_volume_edges'][i][this_tile_ind[i]] + 0.5*self.readout_config['coarse_tiles']['pitch']
-                                        for i in range(2)])
-            tile_coord = (round(float(tile_center[0]), 3),
-                          round(float(tile_center[1]), 3))
+        pitch = self.readout_config['coarse_tiles']['pitch']
+        for volume_name in self.detector_config['drift_volumes'].keys():
+            i_tpc = self.coordinate_manager.volume_to_index[volume_name]
+            tpc_mask = track.tpc_track['TPC_index'] == i_tpc
+            
+            min_tile = torch.tensor([-0.5*self.detector_config['drift_volumes'][volume_name]['anode_span']['width'],
+                                     -0.5*self.detector_config['drift_volumes'][volume_name]['anode_span']['height'],
+                                     ])
+            tile_ind = torch.floor(torch.div(track.drifted_track['position'][tpc_mask,:2] - min_tile, pitch)).int()
 
-            sample_mask = self.tile_receptive_field(tile_coord, track)
-            tile_sample_current_series = self.point_sample_tile_current(tile_coord,
-                                                                        track,
-                                                                        sample_mask)
-            tile_current_series = self.compose_tile_currents(tile_sample_current_series)
-            coarse_grid_timeseries[tile_coord] = tile_current_series
+            unique_tile_indices = torch.unique(tile_ind, dim = 0)
+
+            for this_tile_ind in unique_tile_indices:
+                tile_center = min_tile + (this_tile_ind + 0.5*torch.ones(2))*pitch
+                tile_coord = (i_tpc,
+                              round(float(tile_center[0]), 3),
+                              round(float(tile_center[1]), 3))
+
+                sample_mask = self.tile_receptive_field(tile_coord, track)
+                tile_sample_current_series = self.point_sample_tile_current(tile_coord,
+                                                                            track,
+                                                                            sample_mask)
+                tile_current_series = self.compose_tile_currents(tile_sample_current_series)
+                coarse_grid_timeseries[tile_coord] = tile_current_series
 
         return coarse_grid_timeseries
 
@@ -433,6 +431,7 @@ class ReadoutModel:
         
         for this_coarse_hit in coarse_tile_hits:
 
+            cell_tpc = this_coarse_hit.coarse_cell_tpc # may change
             cell_center_xy = this_coarse_hit.coarse_cell_pos # may change
             cell_trigger_t = this_coarse_hit.coarse_measurement_time
             
@@ -449,6 +448,7 @@ class ReadoutModel:
             in_cell_mask *= track.drifted_track['position'][:,1] < y_bounds[1]
             in_cell_mask *= track.drifted_track['time'] >= t_bounds[0]
             in_cell_mask *= track.drifted_track['time'] < t_bounds[1]
+            in_cell_mask *= track.tpc_track['TPC_index'] == cell_tpc
 
             in_cell_positions = track.drifted_track['position'][in_cell_mask]
             in_cell_charges = track.drifted_track['charge'][in_cell_mask]
@@ -482,7 +482,8 @@ class ReadoutModel:
                                                                               track,
                                                                               sample_mask)
                 pixel_current_series = self.compose_pixel_currents(pixel_sample_current_series, this_coarse_hit)
-                pixel_timeseries[(pixel_coord[0],
+                pixel_timeseries[(cell_tpc,
+                                  pixel_coord[0],
                                   pixel_coord[1],
                                   cell_trigger_t)] = pixel_current_series
                                            
@@ -547,7 +548,10 @@ class GAMPixModel (ReadoutModel):
         # TODO: fix logic for integration_length > 1
         hits = []
         
-        for tile_center, timeseries in tile_timeseries.items():
+        for tile_key, timeseries in tile_timeseries.items():
+            tile_tpc = tile_key[0]
+            tile_center = (tile_key[1], tile_key[2])
+
             time_ticks, interval_charge = timeseries
             
             hold_length = self.readout_config['coarse_tiles']['integration_length']            
@@ -580,7 +584,8 @@ class GAMPixModel (ReadoutModel):
 
                     interval_charge[:hit_index+hold_length] = 0
 
-                    hits.append(CoarseGridSample(tile_center,
+                    hits.append(CoarseGridSample(tile_tpc,
+                                                 tile_center,
                                                  threshold_crossing_t.item(),
                                                  threshold_crossing_z.item(),
                                                  threshold_crossing_charge.item()))
@@ -622,8 +627,9 @@ class GAMPixModel (ReadoutModel):
         hits = []
         
         for pixel_key, timeseries in pixel_timeseries.items():
-            pixel_center = (pixel_key[0], pixel_key[1])
-            cell_trigger_t = pixel_key[2]
+            pixel_tpc = pixel_key[0]
+            pixel_center = (pixel_key[1], pixel_key[2])
+            cell_trigger_t = pixel_key[3]
 
             time_ticks, interval_charge = timeseries
             
@@ -636,13 +642,12 @@ class GAMPixModel (ReadoutModel):
                 
                 for this_timestamp, this_measured_charge in zip(time_ticks, measured_charge):
                     this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
-                    hits.append(PixelSample(pixel_center,
+
+                    hits.append(PixelSample(pixel_tpc,
+                                            pixel_center,
                                             this_timestamp.item(),
                                             this_z.item(),
                                             this_measured_charge.item()))
-                                            # threshold_crossing_t.item(),
-                                            # threshold_crossing_z.item(),
-                                            # threshold_crossing_charge.item()))
         track.pixel_samples = hits
         return hits 
 
@@ -854,7 +859,9 @@ class DetectorModel:
 
         self.coordinate_manager = CoordinateManager(detector_params)
         
-        self.readout_model = GAMPixModel(readout_params)
+        self.readout_model = GAMPixModel(readout_config = readout_params,
+                                         physics_config = physics_params,
+                                         detector_config = detector_params)
         # self.readout_model = LArPixModel(readout_params)
  
     def simulate(self, track, **kwargs):
