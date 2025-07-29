@@ -61,6 +61,7 @@ class Track:
 
         """
         coarse_tile_sample_array = np.array([(0,
+                                              hit.coarse_cell_tpc,
                                               hit.coarse_cell_pos[0],
                                               hit.coarse_cell_pos[1],
                                               hit.coarse_measurement_depth,
@@ -69,6 +70,7 @@ class Track:
                                              for hit in self.coarse_tiles_samples],
                                             dtype = coarse_tile_dtype)
         pixel_sample_array = np.array([(0,
+                                        hit.pixel_tpc,
                                         hit.pixel_pos[0],
                                         hit.pixel_pos[1],
                                         hit.hit_depth,

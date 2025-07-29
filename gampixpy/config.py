@@ -119,16 +119,16 @@ class DetectorConfig (Config):
         for volume_name, volume_dict in self['drift_volumes'].items():
             anode_center = torch.tensor([volume_dict['anode_center']['x'],
                                          volume_dict['anode_center']['y'],
-                                         volume_dict['anode_center']['z']])
+                                         volume_dict['anode_center']['z']]).float()
 
             vertical_axis = torch.tensor([volume_dict['anode_vertical']['x'],
                                           volume_dict['anode_vertical']['y'],
-                                          volume_dict['anode_vertical']['z']])
+                                          volume_dict['anode_vertical']['z']]).float()
             vertical_axis = vertical_axis/torch.sqrt(torch.inner(vertical_axis, vertical_axis))
 
             drift_axis = torch.tensor([volume_dict['drift_direction']['x'],
                                        volume_dict['drift_direction']['y'],
-                                       volume_dict['drift_direction']['z']])
+                                       volume_dict['drift_direction']['z']]).float()
             drift_axis = drift_axis/torch.sqrt(torch.inner(drift_axis, drift_axis))
             # drift_axis = drift_axis/np.linalg.norm(drift_axis)
 
