@@ -1,22 +1,30 @@
-anode:
-  z: -650
-
-boundaries:
-  x_lower_bound:
-    value: -3000
-    unit: cm
-  x_upper_bound:
-    value: 3000
-    unit: cm
-  y_lower_bound:
-    value: -675
-    unit: cm
-  y_upper_bound:
-    value: 675
-    unit: cm
-  z_lower_bound:
-    value: -650
-    unit: cm
-  z_upper_bound:
-    value: 650
-    unit: cm
+drift_volumes:
+  volume_0:
+    anode_center:
+      x:
+        value: 0
+        unit: cm
+      y:
+        value: 0
+        unit: cm
+      z:
+        value: -650
+        unit: cm
+    anode_span:
+      width:
+        value: 6000
+        unit: cm
+      height:
+        value: 1350
+        unit: cm
+    anode_vertical:
+      x: 0
+      y: 1
+      z: 0
+    drift_direction:
+      x: 0
+      y: 0
+      z: 1
+    depth:
+      value: 1300
+      unit: cm

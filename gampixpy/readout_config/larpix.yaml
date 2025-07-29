@@ -1,27 +1,7 @@
-anode:
-  x_lower_bound:
-    value: -1000
-    unit: cm
-  x_upper_bound:
-    value: 1000
-    unit: cm
-  y_lower_bound:
-    value: -1000
-    unit: cm
-  y_upper_bound:
-    value: 1000
-    unit: cm
-  z_lower_bound:
-    value: 0
-    unit: cm
-  z_upper_bound:
-    value: 1000
-    unit: cm
-
 coarse_tiles:
   type: coarse_tiles
   pitch:
-    value: 10
+    value: 7.6
     unit: cm
   gap:
     value: 0.01
