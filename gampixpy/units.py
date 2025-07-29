@@ -73,6 +73,11 @@ J = eV/e*C
 # power
 W = J/s
 
+# angle
+from math import pi
+radians = 1.
+degrees = 360./(2*pi)
+
 def unit_parser(unit_string_expression):
     """
     unit_parser(unit_string_expression)

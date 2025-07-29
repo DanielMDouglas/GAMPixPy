@@ -1,5 +1,5 @@
 from gampixpy.tracks import Track
-from gampixpy.config import default_physics_params
+from gampixpy.config import default_physics_params, default_detector_params
 from gampixpy.units import *
 from gampixpy.recombination import BoxRecombinationModel, BirksRecombinationModel
 
@@ -41,9 +41,12 @@ class InputParser:
     def __init__(self, input_filename,
                  position_offset = [0, 0, 0],
                  sequential_sampling = True,
-                 physics_config = default_physics_params):
+                 physics_config = default_physics_params,
+                 detector_config = default_detector_params):
+
         self.physics_config = physics_config
-        
+        self.detector_config = detector_config
+
         self.input_filename = input_filename
 
         self.sampling_order = []
@@ -555,7 +558,9 @@ class EdepSimParser (SegmentParser):
                           **kwargs):
         trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
-        primary_trajectory = event_trajectories[event_trajectories['parent_id'] == -1]
+        primary_trajectory_mask = event_trajectories['parent_id'] == -1
+        primary_trajectory_mask *= event_trajectories['traj_id'] == 0
+        primary_trajectory = event_trajectories[primary_trajectory_mask]
         
         pdg_code = primary_trajectory['pdg_id']
         mass = particle.Particle.from_pdgid(pdg_code).mass*MeV

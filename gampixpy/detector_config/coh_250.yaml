@@ -1,0 +1,59 @@
+drift_volumes:
+  volume_0:
+    anode_center:
+      x:
+        value: -30
+        unit: cm
+      y:
+        value: 0
+        unit: cm
+      z:
+        value: 0
+        unit: cm
+    anode_span:
+      width:
+        value: 50
+        unit: cm
+      height:
+        value: 60
+        unit: cm
+    anode_vertical:
+      x: 0
+      y: 0
+      z: 1
+    drift_direction:
+      x: 1
+      y: 0
+      z: 0
+    depth:
+      value: 30
+      unit: cm
+  volume_1:
+    anode_center:
+      x:
+        value: 30
+        unit: cm
+      y:
+        value: 0
+        unit: cm
+      z:
+        value: 0
+        unit: cm
+    anode_span:
+      width:
+        value: 50
+        unit: cm
+      height:
+        value: 60
+        unit: cm
+    anode_vertical:
+      x: 0
+      y: 0
+      z: 1
+    drift_direction:
+      x: -1
+      y: 0
+      z: 0
+    depth:
+      value: 30
+      unit: cm

@@ -4,6 +4,7 @@ from gampixpy import units, mobility
 import os
 import yaml
 import numpy as np
+import torch
 
 class Config (dict):
     """
@@ -111,10 +112,76 @@ class DetectorConfig (Config):
         # compute any required parameters from
         # those specified in the YAML
 
-        # nothing to compute yet!
-        # in the future, this should provide a method for coordinate
-        # system transforms between input, internal, and output coords
+        # calculate the span of the anode in TPC coordinates
+        # based on the provided center
+        
+        # need to handle the case where the pitch doesn't evenly divide the span of the anode
+        for volume_name, volume_dict in self['drift_volumes'].items():
+            anode_center = torch.tensor([volume_dict['anode_center']['x'],
+                                         volume_dict['anode_center']['y'],
+                                         volume_dict['anode_center']['z']]).float()
 
+            vertical_axis = torch.tensor([volume_dict['anode_vertical']['x'],
+                                          volume_dict['anode_vertical']['y'],
+                                          volume_dict['anode_vertical']['z']]).float()
+            vertical_axis = vertical_axis/torch.sqrt(torch.inner(vertical_axis, vertical_axis))
+
+            drift_axis = torch.tensor([volume_dict['drift_direction']['x'],
+                                       volume_dict['drift_direction']['y'],
+                                       volume_dict['drift_direction']['z']]).float()
+            drift_axis = drift_axis/torch.sqrt(torch.inner(drift_axis, drift_axis))
+            # drift_axis = drift_axis/np.linalg.norm(drift_axis)
+
+            message = "anode vertical axis is not perpendicular to given drift axis!"
+            assert torch.inner(vertical_axis, drift_axis) == 0, message
+
+            horizontal_axis = torch.linalg.cross(vertical_axis,
+                                                 drift_axis)
+
+            half_span_horizontal = horizontal_axis*volume_dict['anode_span']['width']/2
+            half_span_vertical = vertical_axis*volume_dict['anode_span']['height']/2
+
+            anode_corners = [anode_center - half_span_horizontal - half_span_vertical,
+                             anode_center - half_span_horizontal + half_span_vertical,
+                             anode_center + half_span_horizontal - half_span_vertical,
+                             anode_center + half_span_horizontal + half_span_vertical,
+                             ]
+
+            depth_span = drift_axis*volume_dict['depth']
+            cathode_corners = [anode_center - half_span_horizontal - half_span_vertical + depth_span,
+                               anode_center - half_span_horizontal + half_span_vertical + depth_span,
+                               anode_center + half_span_horizontal - half_span_vertical + depth_span,
+                               anode_center + half_span_horizontal + half_span_vertical + depth_span,
+                               ]
+
+            anode_mask = [1, 1, 1, 1, 0, 0, 0, 0]
+            # hard-coded adjacency based on the definition of the corners above
+            connectivity = torch.tensor([[0, 1, 1, 0, 1, 0, 0, 0],
+                                         [1, 0, 0, 1, 0, 1, 0, 0],
+                                         [1, 0, 0, 1, 0, 0, 1, 0],
+                                         [0, 1, 1, 0, 0, 0, 0, 1],
+                                         [1, 0, 0, 0, 0, 1, 1, 0],
+                                         [0, 1, 0, 0, 1, 0, 0, 1],
+                                         [0, 0, 1, 0, 1, 0, 0, 1],
+                                         [0, 0, 0, 1, 0, 1, 1, 0]], dtype = bool)
+
+            volume_dict.update({'anode_center': anode_center,
+                                'anode_vertical': vertical_axis,
+                                'anode_horizontal': horizontal_axis,
+                                'drift_axis': drift_axis,
+                                'anode_corners': anode_corners,
+                                'cathode_corners': cathode_corners,
+                                'corners': torch.stack(anode_corners + cathode_corners),
+                                'connectivity': connectivity,
+                                })
+        
+        # print (self['drift_volumes'])
+        # self['tile_volume_edges'] = (np.linspace(self['anode']['x_lower_bound'],
+        #                                          self['anode']['x_upper_bound'],
+        #                                          self['n_tiles_x']+1),
+        #                              np.linspace(self['anode']['y_lower_bound'],
+        #                                          self['anode']['y_upper_bound'],
+        #                                          self['n_tiles_y']+1))
         return
 
 class PhysicsConfig (Config):
@@ -198,19 +265,12 @@ class ReadoutConfig (Config):
         # compute any required parameters from
         # those specified in the YAML
 
-        # need to handle the case where the pitch doesn't evenly divide the span of the anode
-        self['n_pixels_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['pixels']['pitch'])
-        self['n_pixels_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['pixels']['pitch'])
+        # self['n_pixels_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['pixels']['pitch'])
+        # self['n_pixels_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['pixels']['pitch'])
 
-        self['n_tiles_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['coarse_tiles']['pitch'])
-        self['n_tiles_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['coarse_tiles']['pitch'])
+        # self['n_tiles_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['coarse_tiles']['pitch'])
+        # self['n_tiles_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['coarse_tiles']['pitch'])
 
-        self['tile_volume_edges'] = (np.linspace(self['anode']['x_lower_bound'],
-                                                 self['anode']['x_upper_bound'],
-                                                 self['n_tiles_x']+1),
-                                     np.linspace(self['anode']['y_lower_bound'],
-                                                 self['anode']['y_upper_bound'],
-                                                 self['n_tiles_y']+1))
         return
 
 default_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
@@ -223,9 +283,9 @@ default_readout_params = ReadoutConfig(os.path.join(gampixpy.__path__[0],
                                                     'readout_config',
                                                     'default.yaml'))
 
-far_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
-                                                      'detector_config',
-                                                      'far_detector.yaml'))
-far_readout_params = ReadoutConfig(os.path.join(gampixpy.__path__[0],
-                                                    'readout_config',
-                                                    'far_detector.yaml'))
+# far_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
+#                                                       'detector_config',
+#                                                       'far_detector.yaml'))
+# far_readout_params = ReadoutConfig(os.path.join(gampixpy.__path__[0],
+#                                                     'readout_config',
+#                                                     'far_detector.yaml'))
