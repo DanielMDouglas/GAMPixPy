@@ -558,7 +558,9 @@ class EdepSimParser (SegmentParser):
                           **kwargs):
         trajectory_mask = self.file_handle['trajectories']['event_id'] == sample_index
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
-        primary_trajectory = event_trajectories[event_trajectories['parent_id'] == -1]
+        primary_trajectory_mask = event_trajectories['parent_id'] == -1
+        primary_trajectory_mask *= event_trajectories['traj_id'] == 0
+        primary_trajectory = event_trajectories[primary_trajectory_mask]
         
         pdg_code = primary_trajectory['pdg_id']
         mass = particle.Particle.from_pdgid(pdg_code).mass*MeV
