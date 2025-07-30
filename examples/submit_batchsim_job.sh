@@ -18,15 +18,22 @@ SINGULARITY_IMAGE_PATH=/sdf/group/neutrino/images/larcv2_ub22.04-cuda12.1-pytorc
 INPUT_EDEPSIM=$1
 OUTPUT_HDF5=$2
 
-TMPID=$(cat /proc/sys/kernel/random/uuid) 
+# READOUT_CONFIG=$3
+# DETECTOR_CONFIG=$4
+
+TMPID=$(cat /proc/sys/kernel/random/uuid)
+TMP_FILE=tmp/${TMPID}.h5
 
 GAMPIXROOT=${HOME}/studies/GAMpix/GAMPixPy
 
-COMMAND="python3 ${GAMPIXROOT}/examples/batch_sim.py ${INPUT_EDEPSIM} -o tmp/${TMPID}.h5 -r ${GAMPIXROOT}/gampixpy/readout_config/GAMPixD.yaml -d ${GAMPIXROOT}/gampixpy/detector_config/coh_250.yaml"
+COMMAND="python3 ${GAMPIXROOT}/examples/batch_sim.py ${INPUT_EDEPSIM} -o ${TMP_FILE} -r ${GAMPIXROOT}/gampixpy/readout_config/GAMPixD.yaml -d ${GAMPIXROOT}/gampixpy/detector_config/coh_250.yaml"
+# COMMAND="python3 ${GAMPIXROOT}/examples/batch_sim.py ${INPUT_EDEPSIM} -o ${TMP_FILE} -r ${READOUT_CONFIG} -d ${DETECTOR_CONFIG}"
 
 singularity exec --nv -B /sdf,/lscratch ${SINGULARITY_IMAGE_PATH} ${COMMAND}
 
-COMMAND="python3 ${GAMPIXROOT}/examples/rotate_to_experimental_coordinates.py tmp/${TMPID}.h5 -o ${OUTPUT_HDF5} -d ${GAMPIXROOT}/gampixpy/detector_config/coh_250.yaml"
+COMMAND="python3 ${GAMPIXROOT}/examples/rotate_to_experimental_coordinates.py ${TMP_FILE} -o ${OUTPUT_HDF5} -d ${GAMPIXROOT}/gampixpy/detector_config/coh_250.yaml"
+# COMMAND="python3 ${GAMPIXROOT}/examples/rotate_to_experimental_coordinates.py ${TMP_FILE} -o ${OUTPUT_HDF5} -d ${DETECTOR_CONFIG}"
 
 singularity exec --nv -B /sdf,/lscratch ${SINGULARITY_IMAGE_PATH} ${COMMAND}
 
+rm tmp/${TMPID}.h5
