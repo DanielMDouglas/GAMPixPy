@@ -47,11 +47,7 @@ def main(args):
 
     input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file)
 
-    # for event_index, edepsim_track, event_meta in tqdm.tqdm(input_parser):
-    for event_index in tqdm.tqdm(input_parser.sampling_order):
-        edepsim_track = input_parser.get_sample(event_index, pdg_selection = -13)
-        event_meta = input_parser.get_meta(event_index)
-        
+    for event_index, edepsim_track, event_meta in tqdm.tqdm(input_parser):
         detector_model.simulate(edepsim_track, verbose = False)
 
         if args.output_file:
