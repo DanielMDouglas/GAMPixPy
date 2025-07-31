@@ -8,6 +8,11 @@ pixel_dtype = np.dtype([("event id", "u4"),
                         ("hit x", "f4"),
                         ("hit y", "f4"),
                         ("hit z", "f4"),
+                        ("tpc index", "u4"),
+                        ("tpc x", "f4"),
+                        ("tpc y", "f4"),
+                        ("tpc z", "f4"),
+                        ("hit t", "f4"),
                         ("hit charge", "f4"),
                         ],
                        align = True)
@@ -15,6 +20,11 @@ coarse_tile_dtype = np.dtype([("event id", "u4"),
                               ("hit x", "f4"),
                               ("hit y", "f4"),
                               ("hit z", "f4"),
+                              ("tpc index", "u4"),
+                              ("tpc x", "f4"),
+                              ("tpc y", "f4"),
+                              ("tpc z", "f4"),
+                              ("hit t", "f4"),
                               ("hit charge", "f4"),
                               ],
                              align = True)
@@ -72,12 +82,22 @@ def main(args):
     outfile['pixel_hits']['hit x'] = pixel_exp_coords[:,0].cpu().numpy()
     outfile['pixel_hits']['hit y'] = pixel_exp_coords[:,1].cpu().numpy()
     outfile['pixel_hits']['hit z'] = pixel_exp_coords[:,2].cpu().numpy()
+    outfile['pixel_hits']['tpc index'] = infile['pixel_hits']['pixel tpc']
+    outfile['pixel_hits']['tpc x'] = pixel_coords[:,0].cpu().numpy()
+    outfile['pixel_hits']['tpc y'] = pixel_coords[:,1].cpu().numpy()
+    outfile['pixel_hits']['tpc z'] = pixel_coords[:,2].cpu().numpy()
+    outfile['pixel_hits']['hit t'] = infile['pixel_hits']['hit t']
     outfile['pixel_hits']['hit charge'] = infile['pixel_hits']['hit charge']
 
     outfile['coarse_hits']['event id'] = infile['coarse_hits']['event id']
     outfile['coarse_hits']['hit x'] = coarse_exp_coords[:,0].cpu().numpy()
     outfile['coarse_hits']['hit y'] = coarse_exp_coords[:,1].cpu().numpy()
     outfile['coarse_hits']['hit z'] = coarse_exp_coords[:,2].cpu().numpy()
+    outfile['coarse_hits']['tpc index'] = infile['coarse_hits']['tile tpc']
+    outfile['coarse_hits']['tpc x'] = coarse_coords[:,0].cpu().numpy()
+    outfile['coarse_hits']['tpc y'] = coarse_coords[:,1].cpu().numpy()
+    outfile['coarse_hits']['tpc z'] = coarse_coords[:,2].cpu().numpy()
+    outfile['coarse_hits']['hit t'] = infile['coarse_hits']['hit t']
     outfile['coarse_hits']['hit charge'] = infile['coarse_hits']['hit charge']
 
     outfile.close()

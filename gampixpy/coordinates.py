@@ -14,12 +14,12 @@ class CoordinateManager:
     def __init__(self, detector_config):
         self.detector_config = detector_config
 
-        self.rotation = 0
-
         # dictionaries for translating from volume name stings to an internal index
+        keylist = list(self.detector_config['drift_volumes'].keys())
+        keylist.sort()
         self.index_to_volume = {i: volume_name
                                 for i, volume_name
-                                in enumerate(self.detector_config['drift_volumes'].keys())}
+                                in enumerate(keylist)}
         self.volume_to_index = {volume_name: i
                                 for i, volume_name
                                 in self.index_to_volume.items()}

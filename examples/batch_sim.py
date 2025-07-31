@@ -53,6 +53,11 @@ def main(args):
         if args.output_file:
             output_manager.add_entry(edepsim_track, event_meta)
 
+        if args.n_samples != -1:
+            if event_index >= args.n_samples:
+                print ("done at", event_index)
+                break
+
     return
 
 if __name__ == '__main__':
@@ -70,6 +75,10 @@ if __name__ == '__main__':
                         type = str,
                         default = "",
                         help = 'output hdf5 file to store coarse tile and pixel measurements')
+    parser.add_argument('-n', '--n_samples',
+                        type = int,
+                        default = -1,
+                        help = 'Number of samples to process (default is to process all events)')
 
     parser.add_argument('-d', '--detector_config',
                         type = str,
