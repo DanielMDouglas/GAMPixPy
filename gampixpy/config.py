@@ -175,13 +175,6 @@ class DetectorConfig (Config):
                                 'connectivity': connectivity,
                                 })
         
-        # print (self['drift_volumes'])
-        # self['tile_volume_edges'] = (np.linspace(self['anode']['x_lower_bound'],
-        #                                          self['anode']['x_upper_bound'],
-        #                                          self['n_tiles_x']+1),
-        #                              np.linspace(self['anode']['y_lower_bound'],
-        #                                          self['anode']['y_upper_bound'],
-        #                                          self['n_tiles_y']+1))
         return
 
 class PhysicsConfig (Config):

@@ -69,15 +69,15 @@ def main(args):
                            maxshape = (None,))
 
     outfile['pixel_hits']['event id'] = infile['pixel_hits']['event id']
-    outfile['pixel_hits']['hit x'] = pixel_coords[:,0].cpu().numpy()
-    outfile['pixel_hits']['hit y'] = pixel_coords[:,1].cpu().numpy()
-    outfile['pixel_hits']['hit z'] = pixel_coords[:,2].cpu().numpy()
+    outfile['pixel_hits']['hit x'] = pixel_exp_coords[:,0].cpu().numpy()
+    outfile['pixel_hits']['hit y'] = pixel_exp_coords[:,1].cpu().numpy()
+    outfile['pixel_hits']['hit z'] = pixel_exp_coords[:,2].cpu().numpy()
     outfile['pixel_hits']['hit charge'] = infile['pixel_hits']['hit charge']
 
     outfile['coarse_hits']['event id'] = infile['coarse_hits']['event id']
-    outfile['coarse_hits']['hit x'] = coarse_coords[:,0].cpu().numpy()
-    outfile['coarse_hits']['hit y'] = coarse_coords[:,1].cpu().numpy()
-    outfile['coarse_hits']['hit z'] = coarse_coords[:,2].cpu().numpy()
+    outfile['coarse_hits']['hit x'] = coarse_exp_coords[:,0].cpu().numpy()
+    outfile['coarse_hits']['hit y'] = coarse_exp_coords[:,1].cpu().numpy()
+    outfile['coarse_hits']['hit z'] = coarse_exp_coords[:,2].cpu().numpy()
     outfile['coarse_hits']['hit charge'] = infile['coarse_hits']['hit charge']
 
     outfile.close()
