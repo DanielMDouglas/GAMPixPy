@@ -23,7 +23,6 @@ class CoordinateManager:
         self.volume_to_index = {volume_name: i
                                 for i, volume_name
                                 in self.index_to_volume.items()}
-        
         return
         
     def to_experiment_coords(self, coords, tpc_index):
@@ -54,7 +53,7 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
 
-        exp_coords = torch.empty((0,3))
+        exp_coords = torch.empty(coords.shape)
         for volume_name, volume_dict in self.detector_config['drift_volumes'].items():
             tpc_origin = volume_dict['anode_center']
 
@@ -66,10 +65,8 @@ class CoordinateManager:
                 coord_subset[:,1,None]*volume_dict['anode_vertical'][None,:] + \
                 coord_subset[:,2,None]*volume_dict['drift_axis'][None,:]
 
-            exp_coords = torch.concatenate([exp_coords,
-                                            exp_coord_subset,
-                                            ])
-            
+            exp_coords[subset_mask] = exp_coord_subset
+
         return exp_coords
 
     def to_tpc_coords(self, exp_coords):

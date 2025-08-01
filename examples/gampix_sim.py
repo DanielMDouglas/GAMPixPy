@@ -66,15 +66,25 @@ def main(args):
     # make the event display
     evd = plotting.EventDisplay(event_data)
 
-    # evd.plot_raw_track() 
+    evd.plot_raw_track() 
     # evd.plot_drifted_track()
 
     # methods where the z-axis is readout time
-    evd.plot_drifted_track_timeline()
+    # evd.plot_drifted_track_timeline()
     # evd.plot_drifted_track_timeline(alpha = 0) # can also pass kwargs to plt.scatter
-    evd.plot_coarse_tile_measurement_timeline(readout_config) # plot tile hits
-    evd.plot_pixel_measurement_timeline(readout_config) # plot pixel hits
+    evd.plot_coarse_tile_measurement(readout_config,
+                                     physics_config,
+                                     detector_config,
+                                     ) # plot tile hits
+    evd.plot_pixel_measurement(readout_config,
+                               physics_config,
+                               detector_config,
+                               ) # plot pixel hits
+    # evd.plot_coarse_tile_measurement_timeline(readout_config) # plot tile hits
+    # evd.plot_pixel_measurement_timeline(readout_config) # plot pixel hits
 
+    evd.plot_drift_volumes(detector_config)
+    
     evd.show()
 
     evd.save(args.plot_output)

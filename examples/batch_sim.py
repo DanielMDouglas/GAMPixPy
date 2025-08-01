@@ -51,7 +51,9 @@ def main(args):
         detector_model.simulate(edepsim_track, verbose = False)
 
         if args.output_file:
-            output_manager.add_entry(edepsim_track, event_meta)
+            output_manager.add_entry(edepsim_track,
+                                     event_meta,
+                                     event_id = event_index)
 
         if args.n_samples != -1:
             if event_index >= args.n_samples:

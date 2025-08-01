@@ -399,7 +399,7 @@ class EventDisplay:
                                        cell_center_z])
             exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
                                                                  cell_tpc)
-            exp_coords = exp_coords.cpu().numpy()[0]
+            exp_coords = exp_coords.cpu().numpy()
             
             cell_measurement = this_hit.coarse_cell_measurement
 
@@ -508,7 +508,7 @@ class EventDisplay:
 
             exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
                                                                  cell_tpc)
-            exp_coords = exp_coords.cpu().numpy()[0]
+            exp_coords = exp_coords.cpu().numpy()
 
             cell_measurement = this_hit.hit_measurement
 
