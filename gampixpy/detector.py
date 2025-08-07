@@ -19,6 +19,14 @@ class ReadoutModel:
     readout_config : ReadoutConfig object
         Config object containing specifications for tile and pixel size, gaps,
         threshold, noise, etc.
+    physics_config : PhysicsConfig object
+        Config object containing physics parameters for liquid Argon.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
+    coordinate_manager : CoordinateManager object
+        Coordinate manager defined by the provided physics_config.  This is a
+        helper for transforming to and from TPC-specific coordinate systems.
     clock_start_time : float
         timestamp of the earliest arriving charge bundle.  This serves as the
         first clock tick of the event readout.
@@ -119,8 +127,13 @@ class ReadoutModel:
 
         Returns
         -------
-        stacked_induced_charge : array-like
-            A stacked array of timestamps and instantaneous charge.  Shape: (2, N_samples).
+        time : array-like
+            Array of timestamps corresponding to the arrival of instantaneous charge.
+            Shape: (N_samples,).
+        charge : array-like
+            Array of instantaneous charge values corresponding to time.  Shape: (N_samples,).
+        label : array-like
+            Array of label values corresponding to charge.  Shape: (N_samples,).
 
         """
         # for now, return the entire charge with the time of arrival
@@ -163,11 +176,14 @@ class ReadoutModel:
 
         Parameters
         ----------
-        sparse_current_series : array-like
-            Stacked array (shape: (2, N_samples)) containing sparse timeseries data.
+        time : array-like
+            Array (shape: (N_samples,)) containing charge arrival time data.
             Expected array is output from readout.point_sample_tile_current.
-        sparse_current_series : array-like
-            Stacked array (shape: (2, N_samples)) containing sparse timeseries data.
+        charge : array-like
+            Array (shape: (N_samples,)) containing charge value data.
+            Expected array is output from readout.point_sample_tile_current.
+        label : array-like
+            Array (shape: (N_samples,)) containing label data associated to charge.
             Expected array is output from readout.point_sample_tile_current.
         
         Returns
@@ -175,10 +191,15 @@ class ReadoutModel:
         clock_ticks : array-like
             Array of timestamps at the beginning of each clock cycle.
         induced_charge : array-like
-            Array of integrated charge induced on pixel within each clock cycle.
+            Array of integrated charge induced on tile within each clock cycle.
+        induced_charge_by_label : array-like
+            2-D array of integrated charge induced on tile within each clock cycle,
+            broken down by each label category.
+        unique_labels : array-like
+            Array of unique_labels encountered by this tile. Indexing should be
+            identical to induced_charge_by_label. 
         
         """
-        # try: # there is a bug where sparse_current_series is sometimes empty            
         last_charge_arrival_time = torch.max(time)
         # when there is only one charge sample in a coarse cell's field
         # and it is also the earliest charge sample, n_clock_ticks is 0
@@ -311,8 +332,13 @@ class ReadoutModel:
 
         Returns
         -------
-        stacked_induced_charge : array-like
-            A stacked array of timestamps and instantaneous charge.  Shape: (2, N_samples).
+        time : array-like
+            Array of timestamps corresponding to the arrival of instantaneous charge.
+            Shape: (N_samples,).
+        charge : array-like
+            Array of instantaneous charge values corresponding to time.  Shape: (N_samples,).
+        label : array-like
+            Array of label values corresponding to charge.  Shape: (N_samples,).
 
         """
         # for now, return the entire charge with the time of arrival
@@ -342,7 +368,6 @@ class ReadoutModel:
                                      charge,
                                      torch.zeros(1),
                                      )
-        # return torch.stack((time, induced_charge))[:,:,None] 
         return time, induced_charge, label
 
     def compose_pixel_currents(self, time, charge, label, coarse_cell_hit):
@@ -353,9 +378,15 @@ class ReadoutModel:
 
         Parameters
         ----------
-        sparse_current_series : array-like
-            Stacked array (shape: (2, N_samples)) containing sparse timeseries data.
-            Expected array is output from readout.point_sample_tile_current.
+        time : array-like
+            Array (shape: (N_samples,)) containing charge arrival time data.
+            Expected array is output from readout.point_sample_pixel_current.
+        charge : array-like
+            Array (shape: (N_samples,)) containing charge value data.
+            Expected array is output from readout.point_sample_pixel_current.
+        label : array-like
+            Array (shape: (N_samples,)) containing label data associated to charge.
+            Expected array is output from readout.point_sample_pixel_current.
         coarse_cell_hit : CoarseGridSample object
             The coarse cell hit inside which this pixel lies.
         
@@ -365,7 +396,13 @@ class ReadoutModel:
             Array of timestamps at the beginning of each clock cycle.
         induced_charge : array-like
             Array of integrated charge induced on pixel within each clock cycle.
-        
+        induced_charge_by_label : array-like
+            2-D array of integrated charge induced on pixel within each clock cycle,
+            broken down by each label category.
+        unique_labels : array-like
+            Array of unique_labels encountered by this pixel. Indexing should be
+            identical to induced_charge_by_label. 
+
         """
         cell_clock_start = coarse_cell_hit.coarse_measurement_time
         cell_clock_end = coarse_cell_hit.coarse_measurement_time + self.readout_config['coarse_tiles']['clock_interval']*self.readout_config['coarse_tiles']['integration_length']
@@ -568,7 +605,6 @@ class GAMPixModel (ReadoutModel):
             List of found hits on the coarse tiles.
         
         """
-        # TODO: fix logic for integration_length > 1
         hits = []
         
         for tile_key, tile_value in tile_timeseries.items():
