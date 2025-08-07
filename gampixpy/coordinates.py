@@ -153,6 +153,7 @@ class CoordinateManager:
         tpc_coords = torch.empty((0,3))
         tpc_time = torch.empty((0,))
         tpc_charge = torch.empty((0,))
+        tpc_label = torch.empty((0,))
         for volume_name, volume_dict in self.detector_config['drift_volumes'].items():
             # choose an arbitrary corner.  Which one doesn't matter, but it should be
             # between 0 and 7 (a rectangular prism has 8 vertices)
@@ -178,6 +179,7 @@ class CoordinateManager:
             tpc_index_subset = self.volume_to_index[volume_name]*torch.ones(anode_disp.shape[0])
             tpc_time_subset = track.raw_track['time'][keep_mask]
             tpc_charge_subset = track.raw_track['charge'][keep_mask]
+            tpc_label_subset = track.raw_track['label'][keep_mask]
             
             tpc_index = torch.concatenate([tpc_index,
                                            tpc_index_subset])
@@ -187,11 +189,14 @@ class CoordinateManager:
                                           tpc_time_subset])
             tpc_charge = torch.concatenate([tpc_charge,
                                             tpc_charge_subset])
+            tpc_label = torch.concatenate([tpc_label,
+                                           tpc_label_subset])
 
         track.tpc_track = {'TPC_index': tpc_index,
                            'position': tpc_coords,
                            'time': tpc_time,
                            'charge': tpc_charge,
+                           'label': tpc_label,
                            }
 
     def to_tpc_indices(self, coords):

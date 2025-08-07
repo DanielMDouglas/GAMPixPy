@@ -137,7 +137,9 @@ class ReadoutModel:
         position = track.drifted_track['position'][sample_mask]
         tpc_index = track.tpc_track['TPC_index'][sample_mask]
         charge = track.drifted_track['charge'][sample_mask]
+        label = track.tpc_track['label'][sample_mask]
         time = track.drifted_track['time'][sample_mask]
+
         pitch = self.readout_config['coarse_tiles']['pitch']
         
         lands_on_tile_of_interest = position[:,0] - tile_coord[1] > -0.5*pitch
@@ -145,14 +147,15 @@ class ReadoutModel:
         lands_on_tile_of_interest *= position[:,1] - tile_coord[2] > -0.5*pitch
         lands_on_tile_of_interest *= position[:,1] - tile_coord[2] < 0.5*pitch
 
+        # to be replaced with a model that depends on position relative to tile
         induced_charge = torch.where(lands_on_tile_of_interest,
                                      charge,
                                      torch.zeros(1),
                                      )
-        
-        return torch.stack((time, induced_charge))[:,:,None] 
+
+        return time, induced_charge, label
     
-    def compose_tile_currents(self, sparse_current_series):
+    def compose_tile_currents(self, time, charge, label):
         """
         readout.compose_tile_currents(sparse_current_series)
 
@@ -160,6 +163,9 @@ class ReadoutModel:
 
         Parameters
         ----------
+        sparse_current_series : array-like
+            Stacked array (shape: (2, N_samples)) containing sparse timeseries data.
+            Expected array is output from readout.point_sample_tile_current.
         sparse_current_series : array-like
             Stacked array (shape: (2, N_samples)) containing sparse timeseries data.
             Expected array is output from readout.point_sample_tile_current.
@@ -172,29 +178,35 @@ class ReadoutModel:
             Array of integrated charge induced on pixel within each clock cycle.
         
         """
-        try: # there is a bug where sparse_current_series is sometimes empty            
-            last_charge_arrival_time = torch.max(sparse_current_series[0,:,:])
-            # when there is only one charge sample in a coarse cell's field
-            # and it is also the earliest charge sample, n_clock_ticks is 0
-            # so, add an extra clock tick to be safe
-            n_clock_ticks = torch.ceil((last_charge_arrival_time - self.clock_start_time)/self.readout_config['coarse_tiles']['clock_interval']).int() + 1 
-            
-            arrival_time_bin_edges = torch.linspace(self.clock_start_time,
-                                                    self.clock_start_time + n_clock_ticks*self.readout_config['coarse_tiles']['clock_interval'],
-                                                    n_clock_ticks + 1,
-                                                    )
+        # try: # there is a bug where sparse_current_series is sometimes empty            
+        last_charge_arrival_time = torch.max(time)
+        # when there is only one charge sample in a coarse cell's field
+        # and it is also the earliest charge sample, n_clock_ticks is 0
+        # so, add an extra clock tick to be safe
+        n_clock_ticks = torch.ceil((last_charge_arrival_time - self.clock_start_time)/self.readout_config['coarse_tiles']['clock_interval']).int() + 1 
+        
+        arrival_time_bin_edges = torch.linspace(self.clock_start_time,
+                                                self.clock_start_time + n_clock_ticks*self.readout_config['coarse_tiles']['clock_interval'],
+                                                n_clock_ticks + 1,
+                                                )
+        # convert input labels to indices (sequential values)
+        unique_labels = torch.unique(label)
+        label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
+        index_to_label = {i: pdg for pdg, i in label_to_index.items()}
+        label_bin_edges = torch.arange(unique_labels.shape[0]+1)
+        label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
 
-            # find the induced charge which falls into each clock bin
-            induced_charge = torchist.histogram(sparse_current_series[0,:,:],
-                                                weights = sparse_current_series[1,:,:],
-                                                edges = arrival_time_bin_edges)
-        except RuntimeError:
-            arrival_time_bin_edges = torch.tensor([self.clock_start_time,
-                                                   self.clock_start_time + self.readout_config['coarse_tiles']['clock_interval'],
-                                                   ])
-            induced_charge = torch.zeros_like(arrival_time_bin_edges)
+        # find the induced charge which falls into each clock bin
+        induced_charge = torchist.histogram(time,
+                                            weights = charge,
+                                            edges = arrival_time_bin_edges)
+        induced_charge_by_label = torchist.histogramdd(torch.stack((time,
+                                                                    label_indices)).T,
+                                                       weights = charge,
+                                                       edges = (arrival_time_bin_edges,
+                                                                label_bin_edges))
 
-        return arrival_time_bin_edges[:-1], induced_charge
+        return arrival_time_bin_edges[:-1], induced_charge, induced_charge_by_label, unique_labels
         
     def tile_receptive_field(self, tile_coord, track, n_neighbor_tiles = 0, **kwargs):
         """
@@ -273,7 +285,7 @@ class ReadoutModel:
                 tile_sample_current_series = self.point_sample_tile_current(tile_coord,
                                                                             track,
                                                                             sample_mask)
-                tile_current_series = self.compose_tile_currents(tile_sample_current_series)
+                tile_current_series = self.compose_tile_currents(*tile_sample_current_series)
                 coarse_grid_timeseries[tile_coord] = tile_current_series
 
         return coarse_grid_timeseries
@@ -316,7 +328,9 @@ class ReadoutModel:
         
         position = track.drifted_track['position'][sample_mask]
         charge = track.drifted_track['charge'][sample_mask]
+        label = track.tpc_track['label'][sample_mask]
         time = track.drifted_track['time'][sample_mask]
+        
         pitch = self.readout_config['pixels']['pitch']
 
         lands_on_pixel_of_interest = position[:,0] - pixel_coord[0] > -0.5*pitch
@@ -328,9 +342,10 @@ class ReadoutModel:
                                      charge,
                                      torch.zeros(1),
                                      )
-        return torch.stack((time, induced_charge))[:,:,None] 
+        # return torch.stack((time, induced_charge))[:,:,None] 
+        return time, induced_charge, label
 
-    def compose_pixel_currents(self, sparse_current_series, coarse_cell_hit):
+    def compose_pixel_currents(self, time, charge, label, coarse_cell_hit):
         """
         readout.compose_pixel_currents(sparse_current_series, coarse_cell_hit)
 
@@ -361,12 +376,24 @@ class ReadoutModel:
                                                 n_clock_ticks + 1,
                                                 )
 
-        # find the induced charge which falls into each clock bin
-        induced_charge = torchist.histogram(sparse_current_series[0,:,:],
-                                            weights = sparse_current_series[1,:,:],
-                                            edges = arrival_time_bin_edges)
+        # convert input labels to indices (sequential values)
+        unique_labels = torch.unique(label)
+        label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
+        index_to_label = {i: pdg for pdg, i in label_to_index.items()}
+        label_bin_edges = torch.arange(unique_labels.shape[0]+1)
+        label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
 
-        return arrival_time_bin_edges[:-1], induced_charge
+        # find the induced charge which falls into each clock bin
+        induced_charge = torchist.histogram(time,
+                                            weights = charge,
+                                            edges = arrival_time_bin_edges)
+        induced_charge_by_label = torchist.histogramdd(torch.stack((time,
+                                                                    label_indices)).T,
+                                                       weights = charge,
+                                                       edges = (arrival_time_bin_edges,
+                                                                label_bin_edges))
+
+        return arrival_time_bin_edges[:-1], induced_charge, induced_charge_by_label, unique_labels
 
     def pixel_receptive_field(self, pixel_coord, track, n_neighbor_pixels = 0, **kwargs):
         """
@@ -461,10 +488,6 @@ class ReadoutModel:
             pixel_volume_edges = (torch.linspace(x_bounds[0], x_bounds[1], n_pixels_x+1),
                                   torch.linspace(y_bounds[0], y_bounds[1], n_pixels_y+1))
             
-            z_series = in_cell_positions[:,2]
-            t_series = track.drifted_track['time'][in_cell_mask]
-            charge_series = in_cell_charges
-
             # generate a unique id for each pixel within this coarse hit
             # so that hits from 
             pixel_ind = torch.floor(torch.div(in_cell_positions[:,[0, 1]] - min_pixel, pixel_pitch)).int()
@@ -481,7 +504,7 @@ class ReadoutModel:
                 pixel_sample_current_series = self.point_sample_pixel_current(pixel_coord,
                                                                               track,
                                                                               sample_mask)
-                pixel_current_series = self.compose_pixel_currents(pixel_sample_current_series, this_coarse_hit)
+                pixel_current_series = self.compose_pixel_currents(*pixel_sample_current_series, this_coarse_hit)
                 pixel_timeseries[(cell_tpc,
                                   pixel_coord[0],
                                   pixel_coord[1],
@@ -548,12 +571,12 @@ class GAMPixModel (ReadoutModel):
         # TODO: fix logic for integration_length > 1
         hits = []
         
-        for tile_key, timeseries in tile_timeseries.items():
+        for tile_key, tile_value in tile_timeseries.items():
+            time_ticks, interval_charge, interval_charge_by_label, labels = tile_value
+
             tile_tpc = tile_key[0]
             tile_center = (tile_key[1], tile_key[2])
 
-            time_ticks, interval_charge = timeseries
-            
             hold_length = self.readout_config['coarse_tiles']['integration_length']            
             
             # search along the bins until no more threshold crossings
@@ -564,6 +587,12 @@ class GAMPixModel (ReadoutModel):
                                                bias = torch.zeros(1),
                                                pad = hold_length-1)[:,0,0]
                 window_charge = window_charge[hold_length-1:]
+                
+                window_charge_by_label = torch.conv_tbc(interval_charge_by_label[:,:,None],
+                                                        torch.ones(hold_length,1,1),
+                                                        bias = torch.zeros(1),
+                                                        pad = hold_length-1)[:,:,0]
+                window_charge_by_label = window_charge_by_label[hold_length-1:]
                 
                 threshold = self.readout_config['coarse_tiles']['noise']*self.readout_config['coarse_tiles']['threshold_sigma']
 
@@ -579,6 +608,8 @@ class GAMPixModel (ReadoutModel):
                     threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
                     
                     threshold_crossing_charge = window_charge[hit_index]
+                    threshold_crossing_charge_by_label = window_charge_by_label[hit_index,:]
+                    attribution_by_label = threshold_crossing_charge_by_label/threshold_crossing_charge
                     if not nonoise:
                         threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
@@ -588,7 +619,9 @@ class GAMPixModel (ReadoutModel):
                                                  tile_center,
                                                  threshold_crossing_t.item(),
                                                  threshold_crossing_z.item(),
-                                                 threshold_crossing_charge.item()))
+                                                 threshold_crossing_charge.item(),
+                                                 attribution_by_label.cpu().numpy(),
+                                                 labels.cpu().numpy()))
                 else:
                     no_more_hits = True
 
@@ -626,28 +659,37 @@ class GAMPixModel (ReadoutModel):
         """
         hits = []
         
-        for pixel_key, timeseries in pixel_timeseries.items():
+        for pixel_key, pixel_value in pixel_timeseries.items():
             pixel_tpc = pixel_key[0]
             pixel_center = (pixel_key[1], pixel_key[2])
             cell_trigger_t = pixel_key[3]
 
-            time_ticks, interval_charge = timeseries
+            time_ticks, interval_charge, interval_charge_by_label, labels = pixel_value
             
             discrim_charge = torch.sum(interval_charge)+torch.poisson(torch.tensor(self.readout_config['pixels']['noise']).float())
             threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
             if discrim_charge > threshold:
                 measured_charge = interval_charge
+                measured_charge_by_label = interval_charge_by_label
+                attribution_by_label = measured_charge_by_label.T/measured_charge
+                attribution_by_label = torch.where(torch.isfinite(attribution_by_label),
+                                                   attribution_by_label,
+                                                   torch.zeros_like(attribution_by_label)).T
+
                 if not nonoise:
                     measured_charge += torch.poisson(self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
                 
-                for this_timestamp, this_measured_charge in zip(time_ticks, measured_charge):
+                for this_timestamp, this_measured_charge, this_attribution_by_label in zip(time_ticks, measured_charge, attribution_by_label):
                     this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
 
                     hits.append(PixelSample(pixel_tpc,
                                             pixel_center,
                                             this_timestamp.item(),
                                             this_z.item(),
-                                            this_measured_charge.item()))
+                                            this_measured_charge.item(),
+                                            this_attribution_by_label.cpu().numpy(),
+                                            labels.cpu().numpy(),
+                                            ))
         track.pixel_samples = hits
         return hits 
 
