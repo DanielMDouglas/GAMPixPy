@@ -562,6 +562,14 @@ class GAMPixModel (ReadoutModel):
     readout_config : ReadoutConfig object
         Config object containing specifications for tile and pixel size, gaps,
         threshold, noise, etc.
+    physics_config : PhysicsConfig object
+        Config object containing physics parameters for liquid Argon.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
+    coordinate_manager : CoordinateManager object
+        Coordinate manager defined by the provided physics_config.  This is a
+        helper for transforming to and from TPC-specific coordinate systems.
     clock_start_time : float
         timestamp of the earliest arriving charge bundle.  This serves as the
         first clock tick of the event readout.
@@ -746,6 +754,14 @@ class LArPixModel (ReadoutModel):
     clock_start_time : float
         timestamp of the earliest arriving charge bundle.  This serves as the
         first clock tick of the event readout.
+    physics_config : PhysicsConfig object
+        Config object containing physics parameters for liquid Argon.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
+    coordinate_manager : CoordinateManager object
+        Coordinate manager defined by the provided physics_config.  This is a
+        helper for transforming to and from TPC-specific coordinate systems.
     coarse_tile_hits : array-like[CoarseTileHit]
         Array of coarse tile hits populated by tile_hit_finding method
     fine_pixel_hits : array-like[CoarseTileHit]

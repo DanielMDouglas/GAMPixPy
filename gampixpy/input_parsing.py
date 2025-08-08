@@ -22,19 +22,24 @@ meta_dtype =  np.dtype([("event id", "u4"),
 class InputParser:
     """
     InputParser(input_filename,
+                position_offset = [0, 0, 0],
                 sequential_sampling = True,
-                physics_config = default_physics_params)
+                physics_config = default_physics_params,
+                detector_config = default_detector_params)
 
     Parent class for more specialized input parsers.
 
     Attributes
     ----------
+    input_filename : str or os.path-like
+        Path to the input data on disk.
     physics_config : PhysicsConfig object
         Physics configuration.  Some early physics processes are handled
         by the input parser (for now!), such as charge/light yield
         calculation.
-    input_filename : str or os.path-like
-        Path to the input data on disk.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
     """
@@ -68,22 +73,27 @@ class InputParser:
 class SegmentParser (InputParser):
     """
     SegmentParser(input_filename,
-                sequential_sampling = True,
-                physics_config = default_physics_params)
+                  position_offset = [0, 0, 0],
+                  sequential_sampling = True,
+                  physics_config = default_physics_params,
+                  detector_config = default_detector_params)
 
     Parent class for segment-based input parsers.  This class defines
     methods for point sampline along segment-like inputs and recombination.
 
     Attributes
     ----------
-    physics_config : PhysicsConfig object
-        Physics configuration.  Some early physics processes are handled
-        by the input parser (for now!), such as charge/light yield
-        calculation.
     input_filename : str or os.path-like
         Path to the input data on disk.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
+    physics_config : PhysicsConfig object
+        Physics configuration.  Some early physics processes are handled
+        by the input parser (for now!), such as charge/light yield
+        calculation.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     
     """
     def do_recombination(self, dE, dx, dEdx, mode = 'birks', **kwargs):
@@ -228,14 +238,17 @@ class RooTrackerParser (SegmentParser):
 
     Attributes
     ----------
-    physics_config : PhysicsConfig object
-        Physics configuration.  Some early physics processes are handled
-        by the input parser (for now!), such as charge/light yield
-        calculation.
     input_filename : str or os.path-like
         Path to the input data on disk.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
+    physics_config : PhysicsConfig object
+        Physics configuration.  Some early physics processes are handled
+        by the input parser (for now!), such as charge/light yield
+        calculation.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     
     """
     def _open_file_handle(self, **kwargs):
