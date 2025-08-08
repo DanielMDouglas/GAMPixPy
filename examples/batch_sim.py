@@ -47,7 +47,17 @@ def main(args):
 
     input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file)
 
+    # # When you need only specific segments from an input event,
+    # # you can specify a whitelist of PDG codes to pass through 
+    # for event_index in tqdm.tqdm(input_parser.sampling_order):
+    #     edepsim_track = input_parser.get_sample(event_index.item(),
+    #                                             pdg_selection = [13, 11])
+    #     event_meta = input_parser.get_meta(event_index.item())
+
+    # If you just need all segments, use the iter method instead
     for event_index, edepsim_track, event_meta in tqdm.tqdm(input_parser):
+        detector_model.simulate(edepsim_track, verbose = False)
+
         detector_model.simulate(edepsim_track, verbose = False)
 
         if args.output_file:
