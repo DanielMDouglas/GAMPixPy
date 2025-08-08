@@ -118,10 +118,10 @@ class CoarseGridSample:
         self.coarse_cell_measurement = coarse_cell_measurement
 
         # save the N_LABELS_COARSE highest contributing labels
-        # if tere are fewer than N_LABELS_COARSE, label is -1
+        # if tere are fewer than N_LABELS_COARSE, label is 0
         # and fraction is 0
         self.attribution = np.zeros(N_LABELS_COARSE)
-        self.labels = -1*np.ones(N_LABELS_COARSE)
+        self.labels = np.zeros(N_LABELS_COARSE)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
             self.attribution[i] = attribution[sorted_ind]
             self.labels[i] = labels[sorted_ind]
