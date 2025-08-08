@@ -67,10 +67,10 @@ class PixelSample:
         self.hit_measurement = hit_measurement
 
         # save the N_LABELS_PIX highest contributing labels
-        # if tere are fewer than N_LABELS_PIX, label is -1
+        # if tere are fewer than N_LABELS_PIX, label is 0
         # and fraction is 0
         self.attribution = np.zeros(N_LABELS_PIX)
-        self.labels = -1*np.ones(N_LABELS_PIX)
+        self.labels = np.zeros(N_LABELS_PIX)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
             self.attribution[i] = attribution[sorted_ind]
             self.labels[i] = labels[sorted_ind]
