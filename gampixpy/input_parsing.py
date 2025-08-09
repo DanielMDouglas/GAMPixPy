@@ -1,5 +1,5 @@
 from gampixpy.tracks import Track
-from gampixpy.config import default_physics_params, default_detector_params
+from gampixpy.config import default_physics_params, default_detector_params, default_readout_params
 from gampixpy.units import *
 from gampixpy.recombination import BoxRecombinationModel, BirksRecombinationModel
 
@@ -25,7 +25,7 @@ class InputParser:
                 position_offset = [0, 0, 0],
                 sequential_sampling = True,
                 physics_config = default_physics_params,
-                detector_config = default_detector_params)
+                readout_config = default_readout_params)
 
     Parent class for more specialized input parsers.
 
@@ -37,9 +37,8 @@ class InputParser:
         Physics configuration.  Some early physics processes are handled
         by the input parser (for now!), such as charge/light yield
         calculation.
-    detector_config : DetectorConfig object
-        Config object containing specifications for TPC volume position and
-        orientation.
+    readout_config : ReadoutConfig object
+        Config object containing specifications for anode readout planes.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
     """
@@ -47,10 +46,11 @@ class InputParser:
                  position_offset = [0, 0, 0],
                  sequential_sampling = True,
                  physics_config = default_physics_params,
-                 detector_config = default_detector_params):
+                 readout_config = default_readout_params,
+                 ):
 
         self.physics_config = physics_config
-        self.detector_config = detector_config
+        self.readout_config = readout_config
 
         self.input_filename = input_filename
 
@@ -76,7 +76,7 @@ class SegmentParser (InputParser):
                   position_offset = [0, 0, 0],
                   sequential_sampling = True,
                   physics_config = default_physics_params,
-                  detector_config = default_detector_params)
+                  readout_config = default_readout_params)
 
     Parent class for segment-based input parsers.  This class defines
     methods for point sampline along segment-like inputs and recombination.
@@ -91,9 +91,8 @@ class SegmentParser (InputParser):
         Physics configuration.  Some early physics processes are handled
         by the input parser (for now!), such as charge/light yield
         calculation.
-    detector_config : DetectorConfig object
-        Config object containing specifications for TPC volume position and
-        orientation.
+    readout_config : ReadoutConfig object
+        Config object containing specifications for readout planes.
     
     """
     def do_recombination(self, dE, dx, dEdx, mode = 'birks', **kwargs):
@@ -247,9 +246,8 @@ class RooTrackerParser (SegmentParser):
         Physics configuration.  Some early physics processes are handled
         by the input parser (for now!), such as charge/light yield
         calculation.
-    detector_config : DetectorConfig object
-        Config object containing specifications for TPC volume position and
-        orientation.
+    readout_config : ReadoutConfig object
+        Config object containing specifications for readout planes.
     
     """
     def _open_file_handle(self, **kwargs):
@@ -325,7 +323,6 @@ class RooTrackerParser (SegmentParser):
     def _get_G4_sample(self, sample_index,
                        pdg_selection = None,
                        position_offset = None,
-                       label_field = 'pdg',
                        **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
@@ -411,12 +408,16 @@ class RooTrackerParser (SegmentParser):
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
+
         label_fields = {'pdg': pdgid,
                         'vertex': vertex_id,
                         'segment': segment_id,
         }
-        labels = label_fields[label_field]
-        
+        try:
+            labels = label_fields[self.readout_config['truth_tracking']['label']]
+        except KeyError:
+            labels = pdgid
+            
         point_samples = self.do_point_sampling(start_4vec,
                                                end_4vec,
                                                dx, dQ,
@@ -637,7 +638,10 @@ class EdepSimParser (SegmentParser):
                         'vertex': vertex_id,
                         'segment': segment_id,
         }
-        labels = label_fields[label_field]
+        try:
+            labels = label_fields[self.readout_config['truth_tracking']['label']]
+        except KeyError:
+            labels = pdg_id
         
         point_samples = self.do_point_sampling(start_4vec,
                                                end_4vec,

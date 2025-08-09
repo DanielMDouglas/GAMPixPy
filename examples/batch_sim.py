@@ -45,7 +45,8 @@ def main(args):
     if args.output_file:
         output_manager = output.OutputManager(args.output_file)
 
-    input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file)
+    input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file,
+                                                                readout_config = readout_config)
 
     # # When you need only specific segments from an input event,
     # # you can specify a whitelist of PDG codes to pass through 
