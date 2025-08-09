@@ -56,8 +56,7 @@ def main(args):
 
     # If you just need all segments, use the iter method instead
     for event_index, edepsim_track, event_meta in tqdm.tqdm(input_parser):
-        detector_model.simulate(edepsim_track, verbose = False)
-
+        
         detector_model.simulate(edepsim_track, verbose = False)
 
         if args.output_file:
