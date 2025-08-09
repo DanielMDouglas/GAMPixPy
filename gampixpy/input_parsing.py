@@ -324,17 +324,34 @@ class RooTrackerParser (SegmentParser):
     def _get_G4_sample(self, sample_index,
                        pdg_selection = None,
                        position_offset = None,
+                       label_field = 'pdg',
                        **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
+        vertex_map = {}
+        for vertex_ind, primary_vertex in enumerate(self.event.Primaries):
+            for primary_particle in primary_vertex.Particles:
+                vertex_map[primary_particle.GetTrackId()] = vertex_ind
+        
         traj_id = torch.empty((0))
+        traj_vertex_id = torch.empty((0))
         traj_pdg = torch.empty((0))
         for trajectory in self.event.Trajectories:
             this_traj_id = torch.tensor([trajectory.GetTrackId()])
             this_traj_pdg = torch.tensor([trajectory.GetPDGCode()])
 
+            parent_trajectory = trajectory
+            parent_traj_id = trajectory.GetParentId()
+            while parent_traj_id != -1:
+                parent_trajectory = self.event.Trajectories[parent_traj_id]
+                parent_traj_id = parent_trajectory.GetParentId()
+                
+            this_traj_vertex_id = torch.tensor([vertex_map[parent_trajectory.GetTrackId()]])
+
             traj_id = torch.cat((this_traj_id,
                                  traj_id))
+            traj_vertex_id = torch.cat((this_traj_vertex_id,
+                                        traj_vertex_id))
             traj_pdg = torch.cat((this_traj_pdg,
                                  traj_pdg))
 
@@ -342,6 +359,11 @@ class RooTrackerParser (SegmentParser):
         end_4vec = torch.empty((0,4))
         dE = torch.empty((0))
         pdgid = torch.empty((0))
+
+        # truth labelling things
+        segment_counter = 0
+        segment_id = torch.empty((0))
+        vertex_id = torch.empty((0))
 
         for container_name, hit_segments in self.event.SegmentDetectors:
             for segment in hit_segments:
@@ -359,6 +381,10 @@ class RooTrackerParser (SegmentParser):
                 parent_id = list(segment.Contrib)[0]
                 this_pdgid = traj_pdg[traj_id == parent_id]
 
+                this_segment_id = torch.tensor([segment_counter])
+                segment_counter += 1
+                this_vertex_id = traj_vertex_id[traj_id == parent_id]
+                
                 if type(pdg_selection) in [np.ndarray, list]:
                     if not this_pdgid.item() in pdg_selection:
                         continue
@@ -374,13 +400,21 @@ class RooTrackerParser (SegmentParser):
                                 dE))
                 pdgid = torch.cat((this_pdgid,
                                    pdgid))
+                segment_id = torch.cat((this_segment_id,
+                                        segment_id))
+                vertex_id = torch.cat((this_vertex_id,
+                                       vertex_id))
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sqrt(torch.sum(displacement**2, dim = 1))
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        labels = pdgid
+        label_fields = {'pdg': pdg_id,
+                        'vertex': vertex_id,
+                        'segment': segment_id,
+        }
+        labels = label_fields[label_field]
         
         point_samples = self.do_point_sampling(start_4vec,
                                                end_4vec,
@@ -560,6 +594,7 @@ class EdepSimParser (SegmentParser):
     def _get_edepsim_event(self, sample_index,
                            pdg_selection=None,
                            position_offset = None,
+                           label_field = 'pdg',
                            **kwargs):
         segment_mask = self.file_handle['segments']['event_id'] == sample_index
         if type(pdg_selection) in [np.ndarray, list]:
@@ -592,7 +627,16 @@ class EdepSimParser (SegmentParser):
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        labels = torch.tensor(event_segments['pdg_id'])
+
+        segment_id = torch.tensor(event_segments['segment_id']).int()
+        vertex_id = torch.tensor(event_segments['vertex_id']).int()
+        pdg_id = torch.tensor(event_segments['pdg_id']).int()
+
+        label_fields = {'pdg': pdg_id,
+                        'vertex': vertex_id,
+                        'segment': segment_id,
+        }
+        labels = label_fields[label_field]
         
         point_samples = self.do_point_sampling(start_4vec,
                                                end_4vec,

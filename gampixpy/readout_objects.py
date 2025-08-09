@@ -72,8 +72,9 @@ class PixelSample:
         self.attribution = np.zeros(N_LABELS_PIX)
         self.labels = np.zeros(N_LABELS_PIX)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
-            self.attribution[i] = attribution[sorted_ind]
-            self.labels[i] = labels[sorted_ind]
+            if i < N_LABELS_PIX:
+                self.attribution[i] = attribution[sorted_ind]
+                self.labels[i] = labels[sorted_ind]
 
 class CoarseGridSample:
     """
@@ -123,5 +124,6 @@ class CoarseGridSample:
         self.attribution = np.zeros(N_LABELS_COARSE)
         self.labels = np.zeros(N_LABELS_COARSE)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
-            self.attribution[i] = attribution[sorted_ind]
-            self.labels[i] = labels[sorted_ind]
+            if i < N_LABELS_COARSE:
+                self.attribution[i] = attribution[sorted_ind]
+                self.labels[i] = labels[sorted_ind]
