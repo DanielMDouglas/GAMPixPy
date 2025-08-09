@@ -14,8 +14,9 @@ class Track:
 
     raw_track : dict
         Dict containing sample position vectors (key: 'position'),
-        sample ionization time (key 'time'), and sample charge 
-        values (key 'charge').  All are array-like.
+        sample ionization time (key 'time'), sample charge values
+        (key 'charge'), and sample labels (key 'label').  All are
+        array-like.
     drifted_track : dict
         Dict containing sample position 3-vectors ('position'), sample
         arrival times ('time') and charge after attenuation ('charge').
@@ -30,10 +31,16 @@ class Track:
     CoarseTileSample : Data class for tile hits.
     
     """
-    def __init__(self, sample_position, sample_time, sample_charge):
+    def __init__(self,
+                 sample_position,
+                 sample_time,
+                 sample_charge,
+                 sample_labels,
+                 ):
         self.raw_track = {'position': sample_position,
                           'time': sample_time,
-                          'charge': sample_charge}
+                          'charge': sample_charge,
+                          'label': sample_labels}
 
         self.tpc_track = {}
         self.drifted_track = {}
@@ -66,7 +73,9 @@ class Track:
                                               hit.coarse_cell_pos[1],
                                               hit.coarse_measurement_depth,
                                               hit.coarse_measurement_time,
-                                              hit.coarse_cell_measurement)
+                                              hit.coarse_cell_measurement,
+                                              hit.attribution,
+                                              hit.labels)
                                              for hit in self.coarse_tiles_samples],
                                             dtype = coarse_tile_dtype)
         pixel_sample_array = np.array([(0,
@@ -75,7 +84,9 @@ class Track:
                                         hit.pixel_pos[1],
                                         hit.hit_depth,
                                         hit.hit_timestamp,
-                                        hit.hit_measurement)
+                                        hit.hit_measurement,
+                                        hit.attribution,
+                                        hit.labels)
                                        for hit in self.pixel_samples],
                                       dtype = pixel_dtype)
 

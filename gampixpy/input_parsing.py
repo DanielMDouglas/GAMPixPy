@@ -22,19 +22,24 @@ meta_dtype =  np.dtype([("event id", "u4"),
 class InputParser:
     """
     InputParser(input_filename,
+                position_offset = [0, 0, 0],
                 sequential_sampling = True,
-                physics_config = default_physics_params)
+                physics_config = default_physics_params,
+                detector_config = default_detector_params)
 
     Parent class for more specialized input parsers.
 
     Attributes
     ----------
+    input_filename : str or os.path-like
+        Path to the input data on disk.
     physics_config : PhysicsConfig object
         Physics configuration.  Some early physics processes are handled
         by the input parser (for now!), such as charge/light yield
         calculation.
-    input_filename : str or os.path-like
-        Path to the input data on disk.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
     """
@@ -68,22 +73,27 @@ class InputParser:
 class SegmentParser (InputParser):
     """
     SegmentParser(input_filename,
-                sequential_sampling = True,
-                physics_config = default_physics_params)
+                  position_offset = [0, 0, 0],
+                  sequential_sampling = True,
+                  physics_config = default_physics_params,
+                  detector_config = default_detector_params)
 
     Parent class for segment-based input parsers.  This class defines
     methods for point sampline along segment-like inputs and recombination.
 
     Attributes
     ----------
-    physics_config : PhysicsConfig object
-        Physics configuration.  Some early physics processes are handled
-        by the input parser (for now!), such as charge/light yield
-        calculation.
     input_filename : str or os.path-like
         Path to the input data on disk.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
+    physics_config : PhysicsConfig object
+        Physics configuration.  Some early physics processes are handled
+        by the input parser (for now!), such as charge/light yield
+        calculation.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     
     """
     def do_recombination(self, dE, dx, dEdx, mode = 'birks', **kwargs):
@@ -139,12 +149,14 @@ class SegmentParser (InputParser):
     
     def do_point_sampling(self, start_4vec, end_4vec,
                           dx, charge_per_segment,
+                          segment_label,
                           sample_density = 1.e-1,
                           sample_normalization = 'charge',
                           **kwargs):
         """
         parser.do_point_sampling(start_4vec, end_4vec,
                                  dx, charge_per_segment,
+                                 segment_label,
                                  sample_density = 1.e-1,
                                  sample_normalization = 'charge',
                                  **kwargs)
@@ -163,6 +175,8 @@ class SegmentParser (InputParser):
             Length array for the image segments.
         charge_per_segment : array-like
             Charge per segment array for the image segments.
+        segment_label : array-like
+            Segment label value array for the image segments.
         sample_density : float
             Density of samples.  Exact interpretation depends upon the
             normalization method specified.
@@ -184,6 +198,8 @@ class SegmentParser (InputParser):
             Interpolated ionization time along the input segments.
         charges : array-like[float]
             Charge values for each interpolated point.
+        labels : array-like[float]
+            Label values for each interpolated point.
         
         """
 
@@ -208,8 +224,9 @@ class SegmentParser (InputParser):
         sample_position = sample_4vec[:,:3]
         sample_time = sample_4vec[:,3]
         sample_charge = torch.repeat_interleave(charge_per_segment/samples_per_segment, samples_per_segment)
+        sample_label = torch.repeat_interleave(segment_label, samples_per_segment)
 
-        return sample_position, sample_time, sample_charge
+        return sample_position, sample_time, sample_charge, sample_label
 
 class RooTrackerParser (SegmentParser):
     """
@@ -221,14 +238,17 @@ class RooTrackerParser (SegmentParser):
 
     Attributes
     ----------
-    physics_config : PhysicsConfig object
-        Physics configuration.  Some early physics processes are handled
-        by the input parser (for now!), such as charge/light yield
-        calculation.
     input_filename : str or os.path-like
         Path to the input data on disk.
     sampling_order : array-like
         Array describing the order for iterating through the input indices.
+    physics_config : PhysicsConfig object
+        Physics configuration.  Some early physics processes are handled
+        by the input parser (for now!), such as charge/light yield
+        calculation.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
     
     """
     def _open_file_handle(self, **kwargs):
@@ -304,17 +324,34 @@ class RooTrackerParser (SegmentParser):
     def _get_G4_sample(self, sample_index,
                        pdg_selection = None,
                        position_offset = None,
+                       label_field = 'pdg',
                        **kwargs):
         self.inputTree.GetEntry(sample_index, **kwargs)
 
+        vertex_map = {}
+        for vertex_ind, primary_vertex in enumerate(self.event.Primaries):
+            for primary_particle in primary_vertex.Particles:
+                vertex_map[primary_particle.GetTrackId()] = vertex_ind
+        
         traj_id = torch.empty((0))
+        traj_vertex_id = torch.empty((0))
         traj_pdg = torch.empty((0))
         for trajectory in self.event.Trajectories:
             this_traj_id = torch.tensor([trajectory.GetTrackId()])
             this_traj_pdg = torch.tensor([trajectory.GetPDGCode()])
 
+            parent_trajectory = trajectory
+            parent_traj_id = trajectory.GetParentId()
+            while parent_traj_id != -1:
+                parent_trajectory = self.event.Trajectories[parent_traj_id]
+                parent_traj_id = parent_trajectory.GetParentId()
+                
+            this_traj_vertex_id = torch.tensor([vertex_map[parent_trajectory.GetTrackId()]])
+
             traj_id = torch.cat((this_traj_id,
                                  traj_id))
+            traj_vertex_id = torch.cat((this_traj_vertex_id,
+                                        traj_vertex_id))
             traj_pdg = torch.cat((this_traj_pdg,
                                  traj_pdg))
 
@@ -322,6 +359,11 @@ class RooTrackerParser (SegmentParser):
         end_4vec = torch.empty((0,4))
         dE = torch.empty((0))
         pdgid = torch.empty((0))
+
+        # truth labelling things
+        segment_counter = 0
+        segment_id = torch.empty((0))
+        vertex_id = torch.empty((0))
 
         for container_name, hit_segments in self.event.SegmentDetectors:
             for segment in hit_segments:
@@ -339,6 +381,10 @@ class RooTrackerParser (SegmentParser):
                 parent_id = list(segment.Contrib)[0]
                 this_pdgid = traj_pdg[traj_id == parent_id]
 
+                this_segment_id = torch.tensor([segment_counter])
+                segment_counter += 1
+                this_vertex_id = traj_vertex_id[traj_id == parent_id]
+                
                 if type(pdg_selection) in [np.ndarray, list]:
                     if not this_pdgid.item() in pdg_selection:
                         continue
@@ -354,17 +400,29 @@ class RooTrackerParser (SegmentParser):
                                 dE))
                 pdgid = torch.cat((this_pdgid,
                                    pdgid))
+                segment_id = torch.cat((this_segment_id,
+                                        segment_id))
+                vertex_id = torch.cat((this_vertex_id,
+                                       vertex_id))
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
         dx = torch.sqrt(torch.sum(displacement**2, dim = 1))
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             **kwargs
-                                                                             )
+        label_fields = {'pdg': pdg_id,
+                        'vertex': vertex_id,
+                        'segment': segment_id,
+        }
+        labels = label_fields[label_field]
+        
+        point_samples = self.do_point_sampling(start_4vec,
+                                               end_4vec,
+                                               dx, dQ,
+                                               labels,
+                                               **kwargs
+                                               )
+        charge_position, charge_time, charge_values, sample_labels = point_samples
 
         offset = self.global_position_offset
         if position_offset:
@@ -372,7 +430,8 @@ class RooTrackerParser (SegmentParser):
             
         return Track(charge_position + offset,
                      charge_time,
-                     charge_values)
+                     charge_values,
+                     sample_labels)
 
     def _get_G4_meta(self, sample_index,
                      position_offset = None,
@@ -535,6 +594,7 @@ class EdepSimParser (SegmentParser):
     def _get_edepsim_event(self, sample_index,
                            pdg_selection=None,
                            position_offset = None,
+                           label_field = 'pdg',
                            **kwargs):
         segment_mask = self.file_handle['segments']['event_id'] == sample_index
         if type(pdg_selection) in [np.ndarray, list]:
@@ -567,18 +627,33 @@ class EdepSimParser (SegmentParser):
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             **kwargs
-                                                                             )
+
+        segment_id = torch.tensor(event_segments['segment_id']).int()
+        vertex_id = torch.tensor(event_segments['vertex_id']).int()
+        pdg_id = torch.tensor(event_segments['pdg_id']).int()
+
+        label_fields = {'pdg': pdg_id,
+                        'vertex': vertex_id,
+                        'segment': segment_id,
+        }
+        labels = label_fields[label_field]
+        
+        point_samples = self.do_point_sampling(start_4vec,
+                                               end_4vec,
+                                               dx, dQ,
+                                               labels,
+                                               **kwargs
+                                               )
+        charge_position, charge_time, charge_values, sample_labels = point_samples
+
         offset = self.global_position_offset
         if position_offset:
             offset += torch.tensor(position_offset)
             
         return Track(charge_position + offset,
                      charge_time,
-                     charge_values)
+                     charge_values,
+                     sample_labels)
     
     def _get_edepsim_meta(self, sample_index,
                           position_offset = None,
@@ -887,17 +962,22 @@ class MarleyCSVParser (SegmentParser):
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx)
-        charge_position, charge_time, charge_values = self.do_point_sampling(start_4vec,
-                                                                             end_4vec,
-                                                                             dx, dQ,
-                                                                             )
+        labels = torch.tensor(event_rows['pdgCode'])
+        point_samples = self.do_point_sampling(start_4vec,
+                                               end_4vec,
+                                               dx, dQ,
+                                               labels,
+                                               )
+        charge_position, charge_time, charge_values, sample_labels = point_samples
+
         offset = self.global_position_offset
         if position_offset:
             offset += torch.tensor(position_offset)
             
         return Track(charge_position + offset,
                      charge_time,
-                     charge_values)
+                     charge_values,
+                     sample_labels)
 
     def _get_CSV_meta(self, sample_index,
                       position_offset = None,
@@ -982,6 +1062,7 @@ class PenelopeParser (InputParser):
         charge_position = torch.tensor(self.file_handle['r']).T
         charge_values = torch.tensor(self.file_handle['num_e'])
         charge_time = torch.zeros_like(charge_values)
+        charge_labels = torch.zeros_like(charge_values)
         
         offset = self.global_position_offset
         if position_offset:
@@ -989,7 +1070,8 @@ class PenelopeParser (InputParser):
             
         return Track(charge_position + offset,
                      charge_time,
-                     charge_values)
+                     charge_values,
+                     charge_labels)
 
     def _get_penelope_meta(self,
                            **kwargs):

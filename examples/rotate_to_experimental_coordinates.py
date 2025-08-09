@@ -1,8 +1,11 @@
 import h5py
-from gampixpy import config, coordinates
+from gampixpy import config, coordinates, readout_objects
 import numpy as np
 
 import torch
+
+N_LABELS_COARSE = readout_objects.N_LABELS_COARSE
+N_LABELS_PIX = readout_objects.N_LABELS_PIX
 
 pixel_dtype = np.dtype([("event id", "u4"),
                         ("hit x", "f4"),
@@ -14,6 +17,8 @@ pixel_dtype = np.dtype([("event id", "u4"),
                         ("tpc z", "f4"),
                         ("hit t", "f4"),
                         ("hit charge", "f4"),
+                        ("attribution", "f4", N_LABELS_COARSE),
+                        ("label", "i4", N_LABELS_COARSE),
                         ],
                        align = True)
 coarse_tile_dtype = np.dtype([("event id", "u4"),
@@ -26,6 +31,8 @@ coarse_tile_dtype = np.dtype([("event id", "u4"),
                               ("tpc z", "f4"),
                               ("hit t", "f4"),
                               ("hit charge", "f4"),
+                              ("attribution", "f4", N_LABELS_PIX),
+                              ("label", "i4", N_LABELS_PIX),
                               ],
                              align = True)
 
@@ -88,6 +95,8 @@ def main(args):
     outfile['pixel_hits']['tpc z'] = pixel_coords[:,2].cpu().numpy()
     outfile['pixel_hits']['hit t'] = infile['pixel_hits']['hit t']
     outfile['pixel_hits']['hit charge'] = infile['pixel_hits']['hit charge']
+    outfile['pixel_hits']['attribution'] = infile['pixel_hits']['attribution']
+    outfile['pixel_hits']['label'] = infile['pixel_hits']['label']
 
     outfile['coarse_hits']['event id'] = infile['coarse_hits']['event id']
     outfile['coarse_hits']['hit x'] = coarse_exp_coords[:,0].cpu().numpy()
@@ -99,6 +108,8 @@ def main(args):
     outfile['coarse_hits']['tpc z'] = coarse_coords[:,2].cpu().numpy()
     outfile['coarse_hits']['hit t'] = infile['coarse_hits']['hit t']
     outfile['coarse_hits']['hit charge'] = infile['coarse_hits']['hit charge']
+    outfile['coarse_hits']['attribution'] = infile['coarse_hits']['attribution']
+    outfile['coarse_hits']['label'] = infile['coarse_hits']['label']
 
     outfile.close()
     
