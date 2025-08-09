@@ -200,33 +200,42 @@ class ReadoutModel:
             identical to induced_charge_by_label. 
         
         """
-        last_charge_arrival_time = torch.max(time)
-        # when there is only one charge sample in a coarse cell's field
-        # and it is also the earliest charge sample, n_clock_ticks is 0
-        # so, add an extra clock tick to be safe
-        n_clock_ticks = torch.ceil((last_charge_arrival_time - self.clock_start_time)/self.readout_config['coarse_tiles']['clock_interval']).int() + 1 
+        try: # there is a bug where sparse_current_series is sometimes empty
+            last_charge_arrival_time = torch.max(time)
+            # when there is only one charge sample in a coarse cell's field
+            # and it is also the earliest charge sample, n_clock_ticks is 0
+            # so, add an extra clock tick to be safe
+            n_clock_ticks = torch.ceil((last_charge_arrival_time - self.clock_start_time)/self.readout_config['coarse_tiles']['clock_interval']).int() + 1 
         
-        arrival_time_bin_edges = torch.linspace(self.clock_start_time,
-                                                self.clock_start_time + n_clock_ticks*self.readout_config['coarse_tiles']['clock_interval'],
-                                                n_clock_ticks + 1,
-                                                )
-        # convert input labels to indices (sequential values)
-        unique_labels = torch.unique(label)
-        label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
-        index_to_label = {i: pdg for pdg, i in label_to_index.items()}
-        label_bin_edges = torch.arange(unique_labels.shape[0]+1)
-        label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
+            arrival_time_bin_edges = torch.linspace(self.clock_start_time,
+                                                    self.clock_start_time + n_clock_ticks*self.readout_config['coarse_tiles']['clock_interval'],
+                                                    n_clock_ticks + 1,
+                                                    )
+            # convert input labels to indices (sequential values)
+            unique_labels = torch.unique(label)
+            label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
+            index_to_label = {i: pdg for pdg, i in label_to_index.items()}
+            label_bin_edges = torch.arange(unique_labels.shape[0]+1)
+            label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
 
-        # find the induced charge which falls into each clock bin
-        induced_charge = torchist.histogram(time,
-                                            weights = charge,
-                                            edges = arrival_time_bin_edges)
-        induced_charge_by_label = torchist.histogramdd(torch.stack((time,
-                                                                    label_indices)).T,
-                                                       weights = charge,
-                                                       edges = (arrival_time_bin_edges,
-                                                                label_bin_edges))
-
+            # find the induced charge which falls into each clock bin
+            induced_charge = torchist.histogram(time,
+                                                weights = charge,
+                                                edges = arrival_time_bin_edges)
+            induced_charge_by_label = torchist.histogramdd(torch.stack((time,
+                                                                        label_indices)).T,
+                                                           weights = charge,
+                                                           edges = (arrival_time_bin_edges,
+                                                                    label_bin_edges))
+        except RuntimeError:
+            arrival_time_bin_edges = torch.tensor([self.clock_start_time,
+                                                   self.clock_start_time + self.readout_config['coarse_tiles']['clock_interval'],
+                                                   ])
+            induced_charge = torch.zeros_like(arrival_time_bin_edges)
+            induced_charge_by_label = torch.zeros((arrival_time_bin_edges.shape[0],
+                                                   0))
+            unique_labels = torch.unique(label)
+            
         return arrival_time_bin_edges[:-1], induced_charge, induced_charge_by_label, unique_labels
         
     def tile_receptive_field(self, tile_coord, track, n_neighbor_tiles = 0, **kwargs):

@@ -205,13 +205,14 @@ class SegmentParser (InputParser):
 
         segment_interval = end_4vec - start_4vec
 
+        sample_density = torch.tensor([sample_density])
         if sample_normalization == 'charge':
             # here, sample_density is [samples/unit charge]
             samples_per_segment = (charge_per_segment*sample_density).int()
         elif sample_normalization == 'length':
             # here, sample_density is [samples/unit length]
             samples_per_segment = (dx*sample_density).int()
-
+            
         sample_start = torch.repeat_interleave(start_4vec, samples_per_segment, dim = 0)
         sample_interval = torch.repeat_interleave(segment_interval, samples_per_segment, dim = 0)
         if torch.any(samples_per_segment):
@@ -410,7 +411,7 @@ class RooTrackerParser (SegmentParser):
         dEdx = torch.where(dx > 0, dE/dx, 0.)
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
-        label_fields = {'pdg': pdg_id,
+        label_fields = {'pdg': pdgid,
                         'vertex': vertex_id,
                         'segment': segment_id,
         }
@@ -628,9 +629,9 @@ class EdepSimParser (SegmentParser):
 
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
 
-        segment_id = torch.tensor(event_segments['segment_id']).int()
-        vertex_id = torch.tensor(event_segments['vertex_id']).int()
-        pdg_id = torch.tensor(event_segments['pdg_id']).int()
+        segment_id = torch.tensor(event_segments['segment_id'].astype(np.int32))
+        vertex_id = torch.tensor(event_segments['vertex_id'].astype(np.int32))
+        pdg_id = torch.tensor(event_segments['pdg_id'].astype(np.int32))
 
         label_fields = {'pdg': pdg_id,
                         'vertex': vertex_id,

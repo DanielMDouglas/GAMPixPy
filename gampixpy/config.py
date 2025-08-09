@@ -6,6 +6,13 @@ import yaml
 import numpy as np
 import torch
 
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    # Set the default device to CUDA
+    torch.set_default_device(device)
+else:
+    device = torch.device('cpu')
+
 class Config (dict):
     """
     Config(config_filename)
@@ -257,12 +264,6 @@ class ReadoutConfig (Config):
     def _compute_derived_parameters(self):
         # compute any required parameters from
         # those specified in the YAML
-
-        # self['n_pixels_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['pixels']['pitch'])
-        # self['n_pixels_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['pixels']['pitch'])
-
-        # self['n_tiles_x'] = int((self['anode']['x_upper_bound'] - self['anode']['x_lower_bound'])/self['coarse_tiles']['pitch'])
-        # self['n_tiles_y'] = int((self['anode']['y_upper_bound'] - self['anode']['y_lower_bound'])/self['coarse_tiles']['pitch'])
 
         return
 

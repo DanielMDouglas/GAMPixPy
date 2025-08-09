@@ -1,5 +1,12 @@
 import torch
 
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+    # Set the default device to CUDA
+    torch.set_default_device(device)
+else:
+    device = torch.device('cpu')
+
 class CoordinateManager:
     """
     CoordinateManager()
