@@ -48,15 +48,12 @@ class ReadoutModel:
     def __init__(self,
                  readout_config = default_readout_params,
                  physics_config = default_physics_params,
-                 detector_config = default_detector_params,
-                 truth_tracking = True):
+                 detector_config = default_detector_params):
         self.readout_config = readout_config
         self.physics_config = physics_config
         self.detector_config = detector_config
 
         self.coordinate_manager = CoordinateManager(detector_config)
-
-        self.truth_tracking = truth_tracking
 
         self.clock_start_time = 0
 
@@ -170,7 +167,7 @@ class ReadoutModel:
                                      torch.zeros(1),
                                      )
 
-        if self.truth_tracking:
+        if self.readout_config['truth_tracking']['enabled']:
             return time, induced_charge, label
         else:
             return time, induced_charge
@@ -223,7 +220,7 @@ class ReadoutModel:
             induced_charge = torchist.histogram(time,
                                                 weights = charge,
                                                 edges = arrival_time_bin_edges)
-            if self.truth_tracking:
+            if self.readout_config['truth_tracking']['enabled']:
                 # convert input labels to indices (sequential values)
                 unique_labels = torch.unique(label)
                 label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
@@ -246,7 +243,7 @@ class ReadoutModel:
                                                    self.clock_start_time + self.readout_config['coarse_tiles']['clock_interval'],
                                                    ])
             induced_charge = torch.zeros_like(arrival_time_bin_edges)
-            if self.truth_tracking:
+            if self.readout_config['truth_tracking']['enabled']:
                 unique_labels = torch.unique(label)
                 induced_charge_by_label = torch.zeros((arrival_time_bin_edges.shape[0],
                                                        0))
@@ -395,7 +392,7 @@ class ReadoutModel:
                                      torch.zeros(1),
                                      )
 
-        if self.truth_tracking:
+        if self.readout_config['truth_tracking']['enabled']:
             return time, induced_charge, label
 
         return time, induced_charge
@@ -448,7 +445,7 @@ class ReadoutModel:
                                             weights = charge,
                                             edges = arrival_time_bin_edges)
 
-        if self.truth_tracking:
+        if self.readout_config['truth_tracking']['enabled']:
             # convert input labels to indices (sequential values)
             unique_labels = torch.unique(label)
             label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
@@ -651,7 +648,7 @@ class GAMPixModel (ReadoutModel):
         hits = []
         
         for tile_key, tile_value in tile_timeseries.items():
-            if self.truth_tracking:
+            if self.readout_config['truth_tracking']['enabled']:
                 time_ticks, interval_charge, interval_charge_by_label, labels = tile_value
             else:
                 time_ticks, interval_charge = tile_value
@@ -670,7 +667,7 @@ class GAMPixModel (ReadoutModel):
                                                pad = hold_length-1)[:,0,0]
                 window_charge = window_charge[hold_length-1:]
                 
-                if self.truth_tracking:
+                if self.readout_config['truth_tracking']['enabled']:
                     window_charge_by_label = torch.conv_tbc(interval_charge_by_label[:,:,None],
                                                             torch.ones(hold_length,1,1),
                                                             bias = torch.zeros(1),
@@ -694,7 +691,7 @@ class GAMPixModel (ReadoutModel):
                     if not nonoise:
                         threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
-                    if self.truth_tracking:
+                    if self.readout_config['truth_tracking']['enabled']:
                         threshold_crossing_charge_by_label = window_charge_by_label[hit_index,:]
                         attribution_by_label = threshold_crossing_charge_by_label/threshold_crossing_charge
                     else:
@@ -753,7 +750,7 @@ class GAMPixModel (ReadoutModel):
             pixel_center = (pixel_key[1], pixel_key[2])
             cell_trigger_t = pixel_key[3]
 
-            if self.truth_tracking:
+            if self.readout_config['truth_tracking']['enabled']:
                 time_ticks, interval_charge, interval_charge_by_label, labels = pixel_value
             else:
                 time_ticks, interval_charge = pixel_value
@@ -762,7 +759,7 @@ class GAMPixModel (ReadoutModel):
             threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
             if discrim_charge > threshold:
 
-                if self.truth_tracking:
+                if self.readout_config['truth_tracking']['enabled']:
                     attribution_by_label = interval_charge_by_label.T/interval_charge
                     attribution_by_label = torch.where(torch.isfinite(attribution_by_label),
                                                        attribution_by_label,
@@ -996,8 +993,7 @@ class DetectorModel:
     def __init__(self,
                  detector_params = default_detector_params,
                  physics_params = default_physics_params,
-                 readout_params = default_readout_params,
-                 truth_tracking = True):
+                 readout_params = default_readout_params):
 
         self.detector_params = detector_params
         self.physics_params = physics_params
@@ -1008,12 +1004,9 @@ class DetectorModel:
         self.readout_model = GAMPixModel(readout_config = readout_params,
                                          physics_config = physics_params,
                                          detector_config = detector_params,
-                                         truth_tracking = truth_tracking,
                                          )
         # self.readout_model = LArPixModel(readout_params)
 
-        self.truth_tracking = truth_tracking
- 
     def simulate(self, track, **kwargs):
         """
         detector.simulate(track, **kwargs)

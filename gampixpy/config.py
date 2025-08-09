@@ -265,6 +265,11 @@ class ReadoutConfig (Config):
         # compute any required parameters from
         # those specified in the YAML
 
+        # truth tagging is enabled by default
+        if not 'truth_tracking' in self:
+            self['truth_tracking'] = {'enabled': True,
+                                      'label': 'pdg'}
+
         return
 
 default_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],

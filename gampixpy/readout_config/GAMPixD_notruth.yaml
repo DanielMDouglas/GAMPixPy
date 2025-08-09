@@ -1,6 +1,5 @@
 truth_tracking:
-  enabled: True
-  label: pdg
+  enabled: False
 
 coarse_tiles:
   type: coarse_tiles

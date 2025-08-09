@@ -1,3 +1,7 @@
+truth_tracking:
+  enabled: True
+  label: pdg
+
 coarse_tiles:
   type: coarse_tiles
   pitch:
