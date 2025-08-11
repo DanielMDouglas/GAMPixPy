@@ -37,7 +37,6 @@ def main(args):
     detector_model = detector.DetectorModel(detector_params = detector_config,
                                             physics_params = physics_config,
                                             readout_params = readout_config,
-                                            truth_tracking = False, # by default, tracking by pdg is enabled
                                             )
 
     # choose the correct input parser using the provided args

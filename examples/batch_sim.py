@@ -40,13 +40,13 @@ def main(args):
     detector_model = detector.DetectorModel(detector_params = detector_config,
                                             physics_params = physics_config,
                                             readout_params = readout_config,
-                                            truth_tracking = False, # by default, tracking by pdg is enabled
                                             )
 
     if args.output_file:
         output_manager = output.OutputManager(args.output_file)
 
-    input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file)
+    input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file,
+                                                                readout_config = readout_config)
 
     # # When you need only specific segments from an input event,
     # # you can specify a whitelist of PDG codes to pass through 

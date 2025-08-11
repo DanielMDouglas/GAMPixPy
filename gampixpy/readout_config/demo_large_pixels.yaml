@@ -1,3 +1,6 @@
+truth_tracking:
+  enabled: False
+
 coarse_tiles:
   type: coarse_tiles
   pitch:
