@@ -688,8 +688,6 @@ class GAMPixModel (ReadoutModel):
                     threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
                     
                     threshold_crossing_charge = window_charge[hit_index]
-                    if not nonoise:
-                        threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
                     if self.readout_config['truth_tracking']['enabled']:
                         threshold_crossing_charge_by_label = window_charge_by_label[hit_index,:]
@@ -698,7 +696,10 @@ class GAMPixModel (ReadoutModel):
                         labels = torch.zeros((0))
                         threshold_crossing_charge_by_label = torch.zeros((0))
                         attribution_by_label = torch.zeros((0))
-                    
+
+                    if not nonoise:
+                        threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+
                     interval_charge[:hit_index+hold_length] = 0
 
                     hits.append(CoarseGridSample(tile_tpc,
