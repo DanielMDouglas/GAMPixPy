@@ -591,7 +591,21 @@ class EdepSimParser (SegmentParser):
         dE = torch.tensor(event_segments['dE']*MeV)
         pdgid = torch.tensor(event_segments['pdg_id'])
 
-        return start_pos, end_pos, start_time, end_time, dE, pdgid
+        segment_id = torch.tensor(event_segments['segment_id'].astype(np.int32))
+        vertex_id = torch.tensor(event_segments['file_vertex_id'].astype(np.int32))
+        pdg_id = torch.tensor(event_segments['pdg_id'].astype(np.int32))
+
+        label_fields = {'pdg': pdg_id,
+                        'vertex': vertex_id,
+                        'segment': segment_id,
+        }
+
+        try:
+            labels = label_fields[self.readout_config['truth_tracking']['label']]
+        except KeyError:
+            labels = pdg_id
+
+        return start_pos, end_pos, start_time, end_time, dE, pdgid, labels
             
     def _get_edepsim_event(self, sample_index,
                            pdg_selection=None,
@@ -631,7 +645,7 @@ class EdepSimParser (SegmentParser):
         dQ = self.do_recombination(dE, dx, dEdx, **kwargs)
 
         segment_id = torch.tensor(event_segments['segment_id'].astype(np.int32))
-        vertex_id = torch.tensor(event_segments['vertex_id'].astype(np.int32))
+        vertex_id = torch.tensor(event_segments['file_vertex_id'].astype(np.int32))
         pdg_id = torch.tensor(event_segments['pdg_id'].astype(np.int32))
 
         label_fields = {'pdg': pdg_id,
@@ -667,7 +681,7 @@ class EdepSimParser (SegmentParser):
         event_trajectories = self.file_handle['trajectories'][trajectory_mask]
         primary_trajectory_mask = event_trajectories['parent_id'] == -1
         primary_trajectory_mask *= event_trajectories['traj_id'] == 0
-        primary_trajectory = event_trajectories[primary_trajectory_mask]
+        primary_trajectory = event_trajectories[primary_trajectory_mask][0]
         
         pdg_code = primary_trajectory['pdg_id']
         mass = particle.Particle.from_pdgid(pdg_code).mass*MeV
@@ -678,8 +692,8 @@ class EdepSimParser (SegmentParser):
         if position_offset:
             offset += np.array(position_offset)
 
-        vertex = primary_trajectory['xyz_start'][0] + offset
-        init_momentum = primary_trajectory['pxyz_start'][0]
+        vertex = primary_trajectory['xyz_start'] + offset
+        init_momentum = primary_trajectory['pxyz_start']
 
         theta = np.arctan2(init_momentum[1], init_momentum[0])
         phi = np.arctan2(np.sqrt(init_momentum[0]**2 + init_momentum[1]**2), init_momentum[2])

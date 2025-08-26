@@ -137,8 +137,7 @@ class DetectorConfig (Config):
                                        volume_dict['drift_direction']['y'],
                                        volume_dict['drift_direction']['z']]).float()
             drift_axis = drift_axis/torch.sqrt(torch.inner(drift_axis, drift_axis))
-            # drift_axis = drift_axis/np.linalg.norm(drift_axis)
-
+            
             message = "anode vertical axis is not perpendicular to given drift axis!"
             assert torch.inner(vertical_axis, drift_axis) == 0, message
 

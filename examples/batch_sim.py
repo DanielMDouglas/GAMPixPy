@@ -52,7 +52,7 @@ def main(args):
     # # you can specify a whitelist of PDG codes to pass through 
     # for event_index in tqdm.tqdm(input_parser.sampling_order):
     #     edepsim_track = input_parser.get_sample(event_index.item(),
-    #                                             pdg_selection = [13, 11])
+    #                                             pdg_selection = [-13, 11])
     #     event_meta = input_parser.get_meta(event_index.item())
 
     # If you just need all segments, use the iter method instead
@@ -64,7 +64,7 @@ def main(args):
         if args.output_file:
             output_manager.add_entry(edepsim_track,
                                      event_meta,
-                                     event_id = event_index)
+                                     event_id = event_index.cpu().item())
 
         if args.n_samples != -1:
             if event_index >= args.n_samples:

@@ -42,7 +42,8 @@ def main(args):
     # choose the correct input parser using the provided args
     # default value for `args.input_format` is 'edepsim'
     # so this will create an EdepSimParser object and expect hdf5 input
-    input_parser = input_parsing.parser_dict[args.input_format](args.input_file)
+    input_parser = input_parsing.parser_dict[args.input_format](args.input_file,
+                                                                readout_config = readout_config)
 
     event_data = input_parser.get_sample(args.event_index)
     # can also filter segments from the input to keep only specific pdg codes
