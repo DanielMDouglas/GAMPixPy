@@ -281,10 +281,10 @@ class ReadoutModel:
         position = track.drifted_track['position']
         pitch = self.readout_config['coarse_tiles']['pitch']
 
-        sample_mask = position[:,0] - tile_coord[1] > -(n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,0] - tile_coord[1] <= (n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,1] - tile_coord[2] > -(n_neighbor_tiles + 0.5)*pitch
-        sample_mask *= position[:,1] - tile_coord[2] <= (n_neighbor_tiles + 0.5)*pitch
+        sample_mask = position[:,0] - tile_coord[1] >= -(n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,0] - tile_coord[1] < (n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,1] - tile_coord[2] >= -(n_neighbor_tiles + 0.5)*pitch
+        sample_mask *= position[:,1] - tile_coord[2] < (n_neighbor_tiles + 0.5)*pitch
 
         return sample_mask 
 
@@ -492,10 +492,10 @@ class ReadoutModel:
         position = track.drifted_track['position']
         pitch = self.readout_config['pixels']['pitch']
 
-        sample_mask = position[:,0] - pixel_coord[0] > -(n_neighbor_pixels + 0.5)*pitch
-        sample_mask *= position[:,0] - pixel_coord[0] <= (n_neighbor_pixels + 0.5)*pitch
-        sample_mask *= position[:,1] - pixel_coord[1] > -(n_neighbor_pixels + 0.5)*pitch
-        sample_mask *= position[:,1] - pixel_coord[1] <= (n_neighbor_pixels + 0.5)*pitch
+        sample_mask = position[:,0] - pixel_coord[0] >= -(n_neighbor_pixels + 0.5)*pitch
+        sample_mask *= position[:,0] - pixel_coord[0] < (n_neighbor_pixels + 0.5)*pitch
+        sample_mask *= position[:,1] - pixel_coord[1] >= -(n_neighbor_pixels + 0.5)*pitch
+        sample_mask *= position[:,1] - pixel_coord[1] < (n_neighbor_pixels + 0.5)*pitch
 
         return sample_mask 
     
@@ -551,8 +551,8 @@ class ReadoutModel:
             min_pixel = torch.tensor([x_bounds[0],
                                       y_bounds[0],
                                       ])
-            n_pixels_x = int((x_bounds[1] - x_bounds[0])/pixel_pitch)
-            n_pixels_y = int((y_bounds[1] - y_bounds[0])/pixel_pitch)
+            n_pixels_x = int(tile_pitch/pixel_pitch)
+            n_pixels_y = int(tile_pitch/pixel_pitch)
             pixel_volume_edges = (torch.linspace(x_bounds[0], x_bounds[1], n_pixels_x+1),
                                   torch.linspace(y_bounds[0], y_bounds[1], n_pixels_y+1))
             
@@ -567,7 +567,6 @@ class ReadoutModel:
                 pixel_coord = (round(float(pixel_center[0]), 3),
                                round(float(pixel_center[1]), 3))
 
-                # sample_mask = torch.all(pixel_ind == this_pixel_ind, dim = 1)
                 sample_mask = self.pixel_receptive_field(pixel_coord, track)
                 pixel_sample_current_series = self.point_sample_pixel_current(pixel_coord,
                                                                               track,

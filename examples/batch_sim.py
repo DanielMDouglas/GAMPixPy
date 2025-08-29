@@ -64,7 +64,8 @@ def main(args):
         if args.output_file:
             output_manager.add_entry(edepsim_track,
                                      event_meta,
-                                     event_id = event_index.cpu().item())
+                                     # event_id = event_index.cpu().item())
+                                     event_id = event_index)
 
         if args.n_samples != -1:
             if event_index >= args.n_samples:
