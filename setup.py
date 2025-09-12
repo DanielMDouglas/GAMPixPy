@@ -9,6 +9,7 @@ reqs = ['numpy',
         'tqdm',
         # 'torch', # skip this for now.  Users must fend for themselves!
         # 'ROOT', # skip this for now.  Users must fend for themselves!
+        'SLACplots',
         'torchist',
         'particle',
         'pyyaml',
