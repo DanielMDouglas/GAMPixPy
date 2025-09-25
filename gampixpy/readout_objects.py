@@ -2,6 +2,7 @@ import numpy as np
 
 N_LABELS_COARSE = 3
 N_LABELS_PIX = 3
+NULL_LABEL = -9999
 
 coarse_tile_dtype = np.dtype([("event id", "u4"),
                               ("tile tpc", "u4"),
@@ -119,10 +120,10 @@ class CoarseGridSample:
         self.coarse_cell_measurement = coarse_cell_measurement
 
         # save the N_LABELS_COARSE highest contributing labels
-        # if tere are fewer than N_LABELS_COARSE, label is 0
+        # if tere are fewer than N_LABELS_COARSE, label is -9999
         # and fraction is 0
         self.attribution = np.zeros(N_LABELS_COARSE)
-        self.labels = np.zeros(N_LABELS_COARSE)
+        self.labels = NULL_LABEL*np.ones(N_LABELS_COARSE)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
             if i < N_LABELS_COARSE:
                 self.attribution[i] = attribution[sorted_ind]
