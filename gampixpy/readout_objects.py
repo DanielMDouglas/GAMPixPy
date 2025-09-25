@@ -71,7 +71,7 @@ class PixelSample:
         # if tere are fewer than N_LABELS_PIX, label is 0
         # and fraction is 0
         self.attribution = np.zeros(N_LABELS_PIX)
-        self.labels = np.zeros(N_LABELS_PIX)
+        self.labels = NULL_LABEL*np.ones(N_LABELS_PIX)
         for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
             if i < N_LABELS_PIX:
                 self.attribution[i] = attribution[sorted_ind]

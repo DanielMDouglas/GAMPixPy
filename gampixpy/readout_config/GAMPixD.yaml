@@ -20,7 +20,7 @@ coarse_tiles:
   threshold_sigma: 5.0
   z_bin_width: 50 # cm
   clock_interval:
-    value: 1.
+    value: 0.5
     unit: us
   hit_duration:
     value: 1.e-4
@@ -41,7 +41,7 @@ pixels:
   threshold_sigma: 4.0
   z_bin_width: 0.5
   clock_interval:
-    value: 1.
+    value: 0.5
     unit: us
   hit_duration:
     value: 3.e-6
