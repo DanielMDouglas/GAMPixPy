@@ -697,7 +697,7 @@ class GAMPixModel (ReadoutModel):
                         attribution_by_label = torch.zeros((0))
 
                     if not nonoise:
-                        threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
                     interval_charge[:hit_index+hold_length] = 0
 
@@ -754,8 +754,11 @@ class GAMPixModel (ReadoutModel):
                 time_ticks, interval_charge, interval_charge_by_label, labels = pixel_value
             else:
                 time_ticks, interval_charge = pixel_value
-            
-            discrim_charge = torch.sum(interval_charge)+torch.poisson(torch.tensor(self.readout_config['pixels']['noise']).float())
+
+            # charge noise on discriminator
+            # discrim_charge = torch.sum(interval_charge)+torch.poisson(torch.tensor(self.readout_config['pixels']['noise']).float())
+            # no noise on discriminator
+            discrim_charge = torch.sum(interval_charge)
             threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
             if discrim_charge > threshold:
 
@@ -769,7 +772,7 @@ class GAMPixModel (ReadoutModel):
                     attribution_by_label = torch.zeros((interval_charge.shape[0], 0))
                     
                 if not nonoise:
-                    interval_charge += torch.poisson(self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
+                    interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
                 
                 for this_timestamp, this_interval_charge, this_attribution_by_label in zip(time_ticks, interval_charge, attribution_by_label):
                     this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
@@ -882,7 +885,7 @@ class LArPixModel (ReadoutModel):
                 
                     threshold_crossing_charge = window_charge[hit_index]
                     if not nonoise:
-                        threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
                     interval_charge[:hit_index+hold_length] = 0
 
@@ -959,7 +962,7 @@ class LArPixModel (ReadoutModel):
 
                     if not nonoise:
                         # add quiescent noise
-                        threshold_crossing_charge += torch.poisson(torch.tensor(self.readout_config['pixels']['noise']).float())
+                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['pixels']['noise']).float())
 
                     interval_charge[:hit_index+hold_length] = 0
 
