@@ -41,6 +41,19 @@ class OutputManager:
                                     maxshape = (None,))
         self.n_tracks = 0 # track how many tracks have been written so far
 
+    def add_file_metadata(self, readout_config, detector_config, physics_config):
+        """
+        om.add_file_metadata()
+
+        Add file-level metadata to the output file.  This is to easily track
+        configuration data and other relevant environment details so that
+        the simulation can be reproduced with no other input (besides the
+        original G4-level input).
+
+        """
+
+        self.outfile.attrs[]
+
     def add_entry(self, track, meta, event_id = None):
         """
         om.add_entry(track, meta, event_id = None)
