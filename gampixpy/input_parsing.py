@@ -587,7 +587,7 @@ class EdepSimParser (SegmentParser):
         
         start_time = torch.tensor(event_segments['t0_start']*ns)
         end_time = torch.tensor(event_segments['t0_end']*ns)
-        
+
         dE = torch.tensor(event_segments['dE']*MeV)
         pdgid = torch.tensor(event_segments['pdg_id'])
 
@@ -629,13 +629,13 @@ class EdepSimParser (SegmentParser):
                                event_segments['z_start']*cm,
                                event_segments['t0_start']*ns,
                                ]).T
-        start_4vec = torch.tensor(start_4vec)
+        start_4vec = torch.tensor(start_4vec).float()
         end_4vec = np.array([event_segments['x_end']*cm,
                              event_segments['y_end']*cm,
                              event_segments['z_end']*cm,
                              event_segments['t0_end']*ns,
                              ]).T
-        end_4vec = torch.tensor(end_4vec)
+        end_4vec = torch.tensor(end_4vec).float()
         dE = torch.tensor(event_segments['dE']*MeV)
 
         displacement = start_4vec[:,:3] - end_4vec[:,:3]
