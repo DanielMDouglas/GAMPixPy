@@ -69,7 +69,7 @@ def main(args):
         cloud_track = ls_generator.get_sample()
         cloud_meta = ls_generator.get_meta()
 
-        detector_model.simulate(cloud_track)
+        detector_model.simulate(cloud_track, verbose = False)
 
         # evd = plotting.EventDisplay(cloud_track)
         # evd.plot_drifted_track_timeline(alpha = 0) # can also pass kwargs to plt.scatter
