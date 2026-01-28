@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from gampixpy import tracks
+from gampixpy.tracks import Track
 from gampixpy.input_parsing import meta_dtype
 
 class Generator:
@@ -120,15 +120,21 @@ class PointSource (Generator):
         
         self.generate_sample_params()
 
-        charge_4vec = torch.tensor(self.n_samples_per_point*[[self.x_init,
-                                                              self.y_init,
-                                                              self.z_init,
-                                                              self.t_init,
-                                                              ]])
+        charge_position = torch.tensor(self.n_samples_per_point*[[self.x_init,
+                                                                  self.y_init,
+                                                                  self.z_init,
+                                                                  ]])
+        charge_time = torch.tensor(self.n_samples_per_point*[self.t_init,
+                                                             ])
+
         charge_values = torch.tensor(self.n_samples_per_point*[self.q_init/self.n_samples_per_point,
-                                                               ])                                 
-        
-        return tracks.Track(charge_4vec, charge_values)
+                                                               ])
+        sample_labels = torch.zeros(self.n_samples_per_point)
+
+        return Track(charge_position,
+                     charge_time,
+                     charge_values,
+                     sample_labels)
 
     def get_meta(self):
         """
@@ -279,6 +285,9 @@ class LineSource (Generator):
             Time for each point within the line distribution.
         sample_charges : array-like[float]
             charge per point sample
+        labels : array-like[float]
+            Label values for each interpolated point.  For a single
+            generated line, this is just a placeholder value.  
         
         """
         # point sampling with a fixed number of samples per length
@@ -294,8 +303,9 @@ class LineSource (Generator):
         sample_position = sample_4vec[:,:3]
         sample_time = sample_4vec[:,3]
         sample_charges = charge_per_sample*torch.ones(self.n_samples)
+        sample_label = torch.zeros(self.n_samples)
 
-        return sample_position, sample_time, sample_charges
+        return sample_position, sample_time, sample_charges, sample_label
         
     def get_sample(self):
         """
@@ -333,12 +343,16 @@ class LineSource (Generator):
         displacement = start_4vec[:3] - end_4vec[:3]
         dx = torch.sum(displacement**2)
         dQ = self.q/self.n_samples
-        charge_4vec, charge_values = self.do_point_sampling(start_4vec,
-                                                            end_4vec,
-                                                            dx, dQ,
-                                                            )
+        point_samples = self.do_point_sampling(start_4vec,
+                                               end_4vec,
+                                               dx, dQ,
+                                               )
+        charge_position, charge_time, charge_values, sample_labels = point_samples
 
-        return tracks.Track(charge_4vec, charge_values)
+        return Track(charge_position,
+                     charge_time,
+                     charge_values,
+                     sample_labels)
 
     def get_meta(self):
         """
