@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from gampixpy import tracks
+from gampixpy.tracks import Track
 from gampixpy.input_parsing import meta_dtype
 
 class Generator:
@@ -120,15 +120,21 @@ class PointSource (Generator):
         
         self.generate_sample_params()
 
-        charge_4vec = torch.tensor(self.n_samples_per_point*[[self.x_init,
-                                                              self.y_init,
-                                                              self.z_init,
-                                                              self.t_init,
-                                                              ]])
+        charge_position = torch.tensor(self.n_samples_per_point*[[self.x_init,
+                                                                  self.y_init,
+                                                                  self.z_init,
+                                                                  ]])
+        charge_time = torch.tensor(self.n_samples_per_point*[self.t_init,
+                                                             ])
+
         charge_values = torch.tensor(self.n_samples_per_point*[self.q_init/self.n_samples_per_point,
-                                                               ])                                 
-        
-        return tracks.Track(charge_4vec, charge_values)
+                                                               ])
+        sample_labels = torch.zeros(self.n_samples_per_point)
+
+        return Track(charge_position,
+                     charge_time,
+                     charge_values,
+                     sample_labels)
 
     def get_meta(self):
         """
@@ -338,7 +344,7 @@ class LineSource (Generator):
                                                             dx, dQ,
                                                             )
 
-        return tracks.Track(charge_4vec, charge_values)
+        return Track(charge_4vec, charge_values)
 
     def get_meta(self):
         """
