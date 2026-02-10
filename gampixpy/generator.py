@@ -98,7 +98,7 @@ class PointSource (Generator):
         self.t_init = self.kwargs['t_range'][0] + (self.kwargs['t_range'][1] - self.kwargs['t_range'][0])*np.random.random()
         self.q_init = self.kwargs['q_range'][0] + (self.kwargs['q_range'][1] - self.kwargs['q_range'][0])*np.random.random()
 
-    def get_sample(self):
+    def get_sample(self, rethrow = True):
         """
         gen.get_sample()
 
@@ -117,8 +117,9 @@ class PointSource (Generator):
             density.
         
         """
-        
-        self.generate_sample_params()
+
+        if rethrow:
+            self.generate_sample_params()
 
         charge_position = torch.tensor(self.n_samples_per_point*[[self.x_init,
                                                                   self.y_init,

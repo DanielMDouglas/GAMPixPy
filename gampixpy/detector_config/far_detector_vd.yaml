@@ -1,0 +1,33 @@
+truth_tracking:
+  enabled: False
+
+drift_volumes:
+  volume_0:
+    anode_center:
+      x:
+        value: 325
+        unit: cm
+      y:
+        value: 0
+        unit: cm
+      z:
+        value: 1045.94
+        unit: cm
+    anode_span:
+      width:
+        value: 2400
+        unit: cm
+      height:
+        value: 2400
+        unit: cm
+    anode_vertical:
+      x: 0
+      y: 1
+      z: 0
+    drift_direction:
+      x: -1
+      y: 0
+      z: 0
+    depth:
+      value: 650
+      unit: cm
