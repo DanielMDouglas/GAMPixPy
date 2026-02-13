@@ -165,8 +165,10 @@ class CoordinateManager:
             # choose an arbitrary corner.  Which one doesn't matter, but it should be
             # between 0 and 7 (a rectangular prism has 8 vertices)
             reference_corner_index = 0
-            reference_corner = volume_dict['corners'][reference_corner_index]
-            connected_corners = volume_dict['corners'][volume_dict['connectivity'][reference_corner_index]]
+            reference_corner = torch.tensor(volume_dict['corners'][reference_corner_index],
+                                            dtype = torch.double)
+            connected_corners = torch.tensor(volume_dict['corners'][volume_dict['connectivity'][reference_corner_index]],
+                                             dtype = torch.double)
 
             leg_vec = connected_corners - reference_corner
             leg_dists = torch.linalg.norm(leg_vec, axis = 1)
