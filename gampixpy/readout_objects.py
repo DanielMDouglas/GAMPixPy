@@ -2,6 +2,7 @@ import numpy as np
 
 N_LABELS_COARSE = 3
 N_LABELS_PIX = 3
+NULL_EVENT = -1
 NULL_LABEL = -9999
 
 coarse_tile_dtype = np.dtype([("event id", "u4"),

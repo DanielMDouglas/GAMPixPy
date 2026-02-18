@@ -26,7 +26,7 @@ class Config (dict):
 
     Parameters
     ----------
-    config_filename : path_like
+    config_filename : path-like
         A string or os.path-like object pointing to a yaml file containing
         definitions for parameters.
 

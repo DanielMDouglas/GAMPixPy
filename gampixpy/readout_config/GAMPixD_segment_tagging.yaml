@@ -1,0 +1,49 @@
+truth_tracking:
+  enabled: True
+  label: segment
+
+coarse_tiles:
+  type: coarse_tiles
+  pitch:
+    value: 10
+    unit: cm
+  gap:
+    value: 0.01
+    unit: cm
+  power_per_tile:
+    value: 1.e-3
+    unit: J/s
+  noise:
+    value: 50
+    unit: e
+  signal_fraction: 1
+  threshold_sigma: 5.0
+  z_bin_width: 50 # cm
+  clock_interval:
+    value: 0.5
+    unit: us
+  hit_duration:
+    value: 1.e-4
+    unit: s
+  integration_length: 20
+
+pixels:
+  type: pixels
+  pitch:
+    value: 0.5
+    unit: cm
+  power_per_pixel:
+    value: 1.e-3
+    unit: J/s
+  noise:
+    value: 50
+    unit: e
+  threshold_sigma: 4.0
+  z_bin_width: 0.5
+  clock_interval:
+    value: 0.5
+    unit: us
+  hit_duration:
+    value: 3.e-6
+    unit: s
+  integration_length: 3
