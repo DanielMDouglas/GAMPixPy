@@ -120,16 +120,26 @@ def main(args):
     depth_width_ax = depth_width_fig.gca()
 
     file_names = ['ps_1e7.npy',
+                  'ps_5e6.npy',
+                  'ps_2e6.npy',
                   'ps_1e6.npy',
                   'ps_5e5.npy',
+                  'ps_2e5.npy',
                   'ps_1e5.npy',
+                  'ps_5e4.npy',
+                  'ps_2e4.npy',
                   'ps_1e4.npy',
                   ]
-    labels = [r'$Q = 10^7$e',
-              r'$Q = 10^6$e',
+    labels = [r'$Q = 1 \times 10^7$e',
+              r'$Q = 5 \times 10^6$e',
+              r'$Q = 2 \times 10^6$e',
+              r'$Q = 1 \times 10^6$e',
               r'$Q = 5 \times 10^5$e',
-              r'$Q = 10^5$e',
-              r'$Q = 10^4$e',
+              r'$Q = 2 \times 10^5$e',
+              r'$Q = 1 \times 10^5$e',
+              r'$Q = 5 \times 10^4$e',
+              r'$Q = 2 \times 10^4$e',
+              r'$Q = 1 \times 10^4$e',
               ]
 
     for file_name, label in zip(file_names, labels):

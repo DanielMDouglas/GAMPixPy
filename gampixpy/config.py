@@ -281,9 +281,23 @@ default_readout_params = ReadoutConfig(os.path.join(gampixpy.__path__[0],
                                                     'readout_config',
                                                     'default.yaml'))
 
-# far_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
-#                                                       'detector_config',
-#                                                       'far_detector.yaml'))
-# far_readout_params = ReadoutConfig(os.path.join(gampixpy.__path__[0],
-#                                                     'readout_config',
-#                                                     'far_detector.yaml'))
+detector_config_path = os.path.join(gampixpy.__path__[0],
+                                    'detector_config')
+preset_detector_configs = {file_name.strip('.yaml'):
+                           DetectorConfig(os.path.join(detector_config_path,
+                                                       file_name))
+                          for file_name in os.listdir(detector_config_path)}
+
+physics_config_path = os.path.join(gampixpy.__path__[0],
+                                   'physics_config')
+preset_physics_configs = {file_name.strip('.yaml'):
+                          PhysicsConfig(os.path.join(physics_config_path,
+                                                     file_name))
+                          for file_name in os.listdir(physics_config_path)}
+
+readout_config_path = os.path.join(gampixpy.__path__[0],
+                                   'readout_config')
+preset_readout_configs = {file_name.strip('.yaml'):
+                          ReadoutConfig(os.path.join(readout_config_path,
+                                                     file_name))
+                          for file_name in os.listdir(readout_config_path)}
