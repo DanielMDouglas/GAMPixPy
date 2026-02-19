@@ -222,7 +222,6 @@ class CrossReferenceParser:
 
         edepsim_event = self.input_parser.get_segments(self.event_id)
         label_mask = edepsim_event[6] == self.label
-        print ("eds labels", np.unique(edepsim_event[6]))
         
         label_edepsim_event = (edepsim_event[0][label_mask],
                                edepsim_event[1][label_mask],
