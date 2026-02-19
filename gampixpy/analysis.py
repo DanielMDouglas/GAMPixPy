@@ -92,6 +92,13 @@ class OutputParser:
 
         self.eval_label_mask()
 
+    @property
+    def label_list(self):
+        """
+        Get the list of available labels for the currently specified event.
+        """
+        return self._label_list
+
     def eval_event_mask(self):
         self._pixel_hit_event_mask = self._file_handle['pixel_hits']['event id'] == self.event_id
         self._coarse_hit_event_mask = self._file_handle['coarse_hits']['event id'] == self.event_id
@@ -194,6 +201,9 @@ class CrossReferenceParser:
         self._physics_config = physics_config
         self._readout_config = readout_config
 
+        self._event_indices = self.output_parser._event_indices
+        self._label_list = np.empty(0)
+
     @property
     def event_id(self):
         return self._event_id
@@ -201,6 +211,8 @@ class CrossReferenceParser:
     @event_id.setter
     def event_id(self, event_id):
         self._event_id = event_id
+        self.output_parser.event_id = event_id
+        self._label_list = self.output_parser._label_list               
 
     @property
     def label(self):
@@ -209,6 +221,13 @@ class CrossReferenceParser:
     @label.setter
     def label(self, label):
         self._label = label
+
+    @property
+    def label_list(self):
+        """
+        Get the list of available labels for the currently specified event.
+        """
+        return self._label_list
         
     def get_data(self,
                  *args,
@@ -236,3 +255,11 @@ class CrossReferenceParser:
                                                      **kwargs)
 
         return label_edepsim_event, gampixpy_event
+
+    def __iter__(self, *args, **kwargs):
+        # iterate through all outputs
+        for event_id in self._event_indices:
+            self.event_id = event_id
+            for label in self._label_list:
+                self.label = label
+                yield self.get_data()
