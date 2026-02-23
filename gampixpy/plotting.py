@@ -185,7 +185,6 @@ def plot_coarse_hit(ax,
     draw_box_from_corners(ax,
                           corners,
                           **coarse_tile_hit_kwargs)
-
     
 def plot_pixel_hit(ax,
                    this_hit,
@@ -228,6 +227,11 @@ def plot_pixel_hit(ax,
 
     draw_box_from_corners(ax, corners,
                          **pixel_hit_kwargs)
+
+def plot_drift_volumes(ax, detector_config):
+    for volume_name, volume_dict in detector_config['drift_volumes'].items():
+        corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
+        draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
     
 class EventDisplay:
     """
@@ -336,6 +340,18 @@ class EventDisplay:
         self.equal_aspect()
         self.fig.savefig(outfile, **kwargs)
 
+    def set_label_axes(self):
+        """
+        evd.set_label_axes()
+
+        Add labels to axes.  These are the simple (x, y, z) and units (cm).
+        
+        """
+
+        self.ax.set_xlabel(r'x [cm]')
+        self.ax.set_ylabel(r'y [cm]')
+        self.ax.set_zlabel(r'z [cm]')
+
     def plot_raw_track(self, **kwargs):
         """
         evd.plot_raw_track(**kwargs)
@@ -370,10 +386,8 @@ class EventDisplay:
                         **kwargs,
                         )
 
-        self.ax.set_xlabel(r'x [cm]')
-        self.ax.set_ylabel(r'y [cm]')
-        self.ax.set_zlabel(r'z [cm]')
-            
+        self.set_label_axes()
+
     def plot_drifted_track(self, detector_config, **kwargs):
         """
         evd.plot_drifted_track(**kwargs)
@@ -414,9 +428,7 @@ class EventDisplay:
                         **kwargs,
                         )
 
-        self.ax.set_xlabel(r'x [cm]')
-        self.ax.set_ylabel(r'y [cm]')
-        self.ax.set_zlabel(r'z [cm]')
+        self.set_label_axes()
 
     def plot_coarse_tile_measurement(self, readout_config, physics_config, detector_config):
         """
@@ -448,9 +460,7 @@ class EventDisplay:
                             this_hit,
                             coordinate_manager)
             
-        self.ax.set_xlabel(r'x [cm]')
-        self.ax.set_ylabel(r'y [cm]')
-        self.ax.set_zlabel(r'z [cm]')
+        self.set_label_axes()
         
     def plot_pixel_measurement(self, readout_config, physics_config, detector_config):
         """
@@ -482,9 +492,7 @@ class EventDisplay:
                            this_hit,
                            coordinate_manager)
             
-        self.ax.set_xlabel(r'x [cm]')
-        self.ax.set_ylabel(r'y [cm]')
-        self.ax.set_zlabel(r'z [cm]')
+        self.set_label_axes()
 
     def plot_drift_volumes(self, detector_config):
         """
@@ -502,10 +510,7 @@ class EventDisplay:
 
         """
 
-        for volume_name, volume_dict in detector_config['drift_volumes'].items():
-            corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
-            draw_box_from_corners(self.ax, corners, **TPC_boundary_kwargs)
+        plot_drift_volumes(self.ax,
+                           detector_config)
 
-        self.ax.set_xlabel(r'x (transverse) [cm]')
-        self.ax.set_ylabel(r'y (transverse) [cm]')
-        self.ax.set_zlabel(r'z (drift) [cm]')
+        self.set_label_axes()
