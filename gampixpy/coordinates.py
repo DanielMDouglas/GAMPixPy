@@ -60,7 +60,17 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
 
-        exp_coords = torch.empty(coords.shape)
+        if len(coords.shape) == 1 or type(coords) == list:
+            coords = torch.tensor(coords)[None,:].float()
+            tpc_index = torch.tensor([tpc_index]).float()
+        else:
+            coords = torch.tensor(coords).float()
+            tpc_index = torch.tensor(tpc_index).float()
+
+        assert len(coords.shape) == 2, "Input coordinates must be of shape (N, 3)!"
+        assert coords.shape[0] == tpc_index.shape[0], "Input coordinates and TPC index must have the same first dimension!"
+        
+        exp_coords = torch.empty_like(coords)
         for volume_name, volume_dict in self.detector_config['drift_volumes'].items():
             tpc_origin = volume_dict['anode_center']
 
@@ -227,4 +237,5 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
         # is this a useful function?  Implement at some point...
-        return coords
+        raise NotImplementedError
+
