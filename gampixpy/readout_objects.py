@@ -81,7 +81,7 @@ class PixelSample:
     @classmethod
     def from_numpy(cls, array):
         return cls(array['pixel tpc'],
-                   array['pixel x', 'pixel y'],
+                   [array['pixel x'], array['pixel y']],
                    array['hit t'],
                    array['hit z'],
                    array['hit charge'],
@@ -144,7 +144,7 @@ class CoarseGridSample:
     @classmethod
     def from_numpy(cls, array):
         return cls(array['tile tpc'],
-                   array['tile x', 'tile y'],
+                   [array['tile x'], array['tile y']],
                    array['hit t'],
                    array['hit z'],
                    array['hit charge'],
