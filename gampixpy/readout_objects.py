@@ -78,6 +78,17 @@ class PixelSample:
                 self.attribution[i] = attribution[sorted_ind]
                 self.labels[i] = labels[sorted_ind]
 
+    @classmethod
+    def from_numpy(cls, array):
+        return cls(array['pixel tpc'],
+                   array['pixel x', 'pixel y'],
+                   array['hit t'],
+                   array['hit z'],
+                   array['hit charge'],
+                   array['attribution'],
+                   array['label'],
+                   )
+
 class CoarseGridSample:
     """
     CoarseGridSample(coarse_cell_tpc,
@@ -129,3 +140,14 @@ class CoarseGridSample:
             if i < N_LABELS_COARSE:
                 self.attribution[i] = attribution[sorted_ind]
                 self.labels[i] = labels[sorted_ind]
+
+    @classmethod
+    def from_numpy(cls, array):
+        return cls(array['tile tpc'],
+                   array['tile x', 'tile y'],
+                   array['hit t'],
+                   array['hit z'],
+                   array['hit charge'],
+                   array['attribution'],
+                   array['label'],
+                   )
