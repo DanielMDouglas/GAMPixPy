@@ -143,6 +143,9 @@ def draw_box_from_corners(ax,
 def plot_coarse_hit(ax,
                     this_hit,
                     coordinate_manager,
+                    readout_config,
+                    physics_config,
+                    detector_config,
                     z_offset = 0):
     cell_tpc = this_hit.coarse_cell_tpc
             
@@ -189,6 +192,9 @@ def plot_coarse_hit(ax,
 def plot_pixel_hit(ax,
                    this_hit,
                    coordinate_manager,
+                   readout_config,
+                   physics_config,
+                   detector_config,
                    z_offset = 0):
     cell_tpc = this_hit.pixel_tpc
 
@@ -458,7 +464,11 @@ class EventDisplay:
         for this_hit in self.track_object.coarse_tiles_samples:
             plot_coarse_hit(self.ax,
                             this_hit,
-                            coordinate_manager)
+                            coordinate_manager,
+                            readout_config,
+                            physics_config,
+                            detector_config,
+                            )
             
         self.set_label_axes()
         
@@ -490,7 +500,11 @@ class EventDisplay:
         for this_hit in self.track_object.pixel_samples:
             plot_pixel_hit(self.ax,
                            this_hit,
-                           coordinate_manager)
+                           coordinate_manager,
+                           readout_config,
+                           physics_config,
+                           detector_config,
+                           )
             
         self.set_label_axes()
 
