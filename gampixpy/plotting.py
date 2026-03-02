@@ -12,11 +12,11 @@ import SLACplots
 coarse_tile_hit_kwargs = dict(facecolors=SLACplots.stanford.palo_verde,
                               linewidths=1,
                               edgecolors=SLACplots.SLACblue,
-                              alpha = 0.25)
+                              alpha = 0.1)
 pixel_hit_kwargs = dict(facecolors=SLACplots.stanford.illuminating,
                         linewidths=1,
                         edgecolors=SLACplots.stanford.illuminating,
-                        alpha = 0.5)
+                        alpha = 0.2)
 TPC_boundary_kwargs = dict(facecolors=None,
                            linewidths=1,
                            edgecolors=SLACplots.stanford.full_palette['Black']['50%'],
@@ -238,6 +238,7 @@ def plot_drift_volumes(ax, detector_config):
     for volume_name, volume_dict in detector_config['drift_volumes'].items():
         corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
+        print (volume_name, corners)
     
 class EventDisplay:
     """
