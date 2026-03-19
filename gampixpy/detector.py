@@ -1062,17 +1062,22 @@ class DetectorModel:
                                        sigma_longitudinal,
                                        )).T
 
-        drifted_positions = torch.normal(sampled_track.tpc_track['position'],
-                                         diffusion_sigma)
+        if 'drift_subsampling' in kwargs:
+            drifted_positions = torch.cat(tuple(torch.normal(sampled_track.tpc_track['position'],
+                                                             diffusion_sigma)
+                                                for i in range(kwargs['drift_subsampling'])))
+        else:
+            drifted_positions = torch.normal(sampled_track.tpc_track['position'],
+                                             diffusion_sigma)
 
         # charge is diminished by attenuation
         drifted_charges = sampled_track.tpc_track['charge']*torch.exp(-drift_time/self.physics_params['charge_drift']['electron_lifetime'])
 
         # add dispersion to the arrival of charge due to longitudinal diffusion
         time_dispersion = (drifted_positions[:, 2] - sampled_track.tpc_track['position'][:, 2])/self.physics_params['charge_drift']['drift_speed'] 
-        
+
         arrival_time = drift_time + sampled_track.tpc_track['time'] + time_dispersion
-            
+
         # might also include a sub-sampling step?
         # in case initial sampling is not fine enough
 

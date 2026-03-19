@@ -37,11 +37,11 @@ class Generator:
     
 class PointSource (Generator):
     """
-    PointSource(xrange=None,
-                yrange=None,
-                zrange=None,
-                trange=None,
-                qrange=None)
+    PointSource(x_range=None,
+                y_range=None,
+                z_range=None,
+                t_range=None,
+                q_range=None)
 
     A generator for point sources uniformly distributed within a
     rectangular volume.  The keyword arguments specify the boundaries
@@ -50,15 +50,15 @@ class PointSource (Generator):
 
     Attributes
     ----------
-    xrange : tuple(float, float)
+    x_range : tuple(float, float)
         Range of x values from which to sample
-    yrange : tuple(float, float)
+    y_range : tuple(float, float)
         Range of y values from which to sample
-    zrange : tuple(float, float)
+    z_range : tuple(float, float)
         Range of z values from which to sample
-    trange : tuple(float, float)
+    t_range : tuple(float, float)
         Range of t values from which to sample
-    qrange : tuple(float, float)
+    q_range : tuple(float, float)
         Range of q values from which to sample
 
     Examples
