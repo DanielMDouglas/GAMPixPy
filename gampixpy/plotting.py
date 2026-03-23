@@ -207,7 +207,7 @@ def plot_pixel_hit(ax,
 
     exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
                                                          cell_tpc)[0]
-    exp_coords = exp_coords.cpu().numpy()[0]
+    exp_coords = exp_coords.cpu().numpy()
 
     pitch = readout_config['pixels']['pitch']
     
