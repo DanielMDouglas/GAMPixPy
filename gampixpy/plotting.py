@@ -138,9 +138,6 @@ def draw_box_from_corners(ax,
              front_face,
              ]
 
-    print (corners)
-    print (corners[0])
-    
     ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
 
 def plot_coarse_hit(ax,
