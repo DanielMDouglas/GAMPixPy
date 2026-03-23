@@ -137,6 +137,9 @@ def draw_box_from_corners(ax,
              back_face,
              front_face,
              ]
+
+    print (corners)
+    print (corners[0])
     
     ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
 
@@ -156,7 +159,7 @@ def plot_coarse_hit(ax,
                                cell_center_xy[1],
                                cell_center_z])
     exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
-                                                         cell_tpc)
+                                                         cell_tpc)[0]
     exp_coords = exp_coords.cpu().numpy()
             
     cell_measurement = this_hit.coarse_cell_measurement
@@ -205,7 +208,9 @@ def plot_pixel_hit(ax,
                                cell_center_xy[1],
                                cell_center_z + z_offset])
 
-    exp_coords = coordinate_manager.to_experiment_coords(tpc_coords, cell_tpc).cpu().numpy()[0]
+    exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
+                                                         cell_tpc)[0]
+    exp_coords = exp_coords.cpu().numpy()[0]
 
     pitch = readout_config['pixels']['pitch']
     
@@ -238,8 +243,7 @@ def plot_drift_volumes(ax, detector_config):
     for volume_name, volume_dict in detector_config['drift_volumes'].items():
         corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
-        print (volume_name, corners)
-    
+        
 class EventDisplay:
     """
     EventDisplay(track)
@@ -306,13 +310,7 @@ class EventDisplay:
         None
 
         """
-        extents = np.array([getattr(self.ax, 'get_{}lim'.format(dim))() for dim in 'xy'])
-        sz = extents[:,1] - extents[:,0]
-        centers = np.mean(extents, axis=1)
-        maxsize = max(abs(sz))
-        r = maxsize/2
-        for ctr, dim in zip(centers, 'xy'):
-            getattr(self.ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+        self.ax.axis('equal')
             
     def show(self):
         """
