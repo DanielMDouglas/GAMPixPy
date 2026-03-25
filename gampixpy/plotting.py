@@ -238,7 +238,8 @@ def plot_pixel_hit(ax,
 
 def plot_drift_volumes(ax, detector_config):
     for volume_name, volume_dict in detector_config['drift_volumes'].items():
-        corners = volume_dict['anode_corners'] + volume_dict['cathode_corners']
+        corners = [corner.cpu() for corner in 
+                   volume_dict['anode_corners'] + volume_dict['cathode_corners']]
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
         
 class EventDisplay:
