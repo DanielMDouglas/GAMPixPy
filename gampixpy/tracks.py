@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from gampixpy.readout_objects import coarse_tile_dtype, pixel_dtype
 
@@ -91,3 +92,9 @@ class Track:
                                       dtype = pixel_dtype)
 
         return coarse_tile_sample_array, pixel_sample_array
+
+null_track = Track(torch.tensor([]),
+                   torch.tensor([]),
+                   torch.tensor([]),
+                   torch.tensor([]),
+                   )
