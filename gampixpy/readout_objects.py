@@ -1,32 +1,38 @@
+from gampixpy import config
+
 import numpy as np
 
-N_LABELS_COARSE = 3
-N_LABELS_PIX = 3
 NULL_EVENT = -1
 NULL_LABEL = -9999
 
-coarse_tile_dtype = np.dtype([("event id", "u4"),
-                              ("tile tpc", "u4"),
-                              ("tile x", "f4"),
-                              ("tile y", "f4"),
-                              ("hit z", "f4"),
-                              ("hit t", "f4"),
-                              ("hit charge", "f4"),
-                              ("attribution", "f4", N_LABELS_COARSE),
-                              ("label", "i4", N_LABELS_COARSE),
-                              ],
-                             align = True)
-pixel_dtype = np.dtype([("event id", "u4"),
-                        ("pixel tpc", "u4"),
-                        ("pixel x", "f4"),
-                        ("pixel y", "f4"),
-                        ("hit z", "f4"),
-                        ("hit t", "f4"),
-                        ("hit charge", "f4"),
-                        ("attribution", "f4", N_LABELS_PIX),
-                        ("label", "i4", N_LABELS_PIX),
-                        ],
-                       align = True)
+def dtype_factory(readout_config = config.default_readout_params):
+    n_labels = readout_config['truth_tracking']['n_labels']
+    tile_measurement_series_length = readout_config['coarse_tiles']['integration_length']
+
+    coarse_tile_dtype = np.dtype([("event id", "u4"),
+                                  ("tile tpc", "u4"),
+                                  ("tile x", "f4"),
+                                  ("tile y", "f4"),
+                                  ("hit z", "f4"),
+                                  ("hit t", "f4"),
+                                  ("hit charge", "f4", tile_measurement_series_length),
+                                  ("attribution", "f4", n_labels),
+                                  ("label", "i4", n_labels),
+                                  ],
+                                 align = True)
+
+    pixel_dtype = np.dtype([("event id", "u4"),
+                            ("pixel tpc", "u4"),
+                            ("pixel x", "f4"),
+                            ("pixel y", "f4"),
+                            ("hit z", "f4"),
+                            ("hit t", "f4"),
+                            ("hit charge", "f4", pixel_measurement_series_length),
+                            ("attribution", "f4", n_labels),
+                            ("label", "i4", n_labels),
+                            ],
+                           align = True)
+    return coarse_tile_dtype, pixel_dtype
 
 class PixelSample:
     """
@@ -68,15 +74,25 @@ class PixelSample:
         self.hit_depth = hit_depth
         self.hit_measurement = hit_measurement
 
-        # save the N_LABELS_PIX highest contributing labels
-        # if tere are fewer than N_LABELS_PIX, label is 0
-        # and fraction is 0
-        self.attribution = np.zeros(N_LABELS_PIX)
-        self.labels = NULL_LABEL*np.ones(N_LABELS_PIX)
-        for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
-            if i < N_LABELS_PIX:
-                self.attribution[i] = attribution[sorted_ind]
-                self.labels[i] = labels[sorted_ind]
+        # # save the N_LABELS_PIX highest contributing labels
+        # # if tere are fewer than N_LABELS_PIX, label is 0
+        # # and fraction is 0
+        # self.attribution = np.zeros(N_LABELS_PIX)
+        # self.labels = NULL_LABEL*np.ones(N_LABELS_PIX)
+        # for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
+        #     if i < N_LABELS_PIX:
+        #         self.attribution[i] = attribution[sorted_ind]
+        #         self.labels[i] = labels[sorted_ind]
+
+        # # only reduce attribution when writting to disk
+        # self.attribution = np.zeros(N_LABELS_PIX)
+        # self.labels = NULL_LABEL*np.ones(N_LABELS_PIX)
+        # for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
+        #     if i < N_LABELS_PIX:
+        #         self.attribution[i] = attribution[sorted_ind]
+        #         self.labels[i] = labels[sorted_ind]
+        print (attribution.shape)
+        print (labels.shape)
 
     @classmethod
     def from_numpy(cls, array):
@@ -130,16 +146,18 @@ class CoarseGridSample:
         self.coarse_measurement_time = measurement_time
         self.coarse_measurement_depth = measurement_depth
         self.coarse_cell_measurement = coarse_cell_measurement
-
+        
         # save the N_LABELS_COARSE highest contributing labels
         # if tere are fewer than N_LABELS_COARSE, label is -9999
         # and fraction is 0
-        self.attribution = np.zeros(N_LABELS_COARSE)
-        self.labels = NULL_LABEL*np.ones(N_LABELS_COARSE)
-        for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
-            if i < N_LABELS_COARSE:
-                self.attribution[i] = attribution[sorted_ind]
-                self.labels[i] = labels[sorted_ind]
+        # self.attribution = np.zeros(N_LABELS_COARSE)
+        # self.labels = NULL_LABEL*np.ones(N_LABELS_COARSE)
+        # for i, sorted_ind in enumerate(np.argsort(attribution)[::-1]):
+        #     if i < N_LABELS_COARSE:
+        #         self.attribution[i] = attribution[sorted_ind]
+        #         self.labels[i] = labels[sorted_ind]
+        print (attribution.shape)
+        print (labels.shape)
 
     @classmethod
     def from_numpy(cls, array):

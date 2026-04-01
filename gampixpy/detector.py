@@ -686,26 +686,44 @@ class GAMPixModel (ReadoutModel):
                     # is there a better way to do this?
                     threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
                     
-                    threshold_crossing_charge = window_charge[hit_index]
+                    recorded_waveform = interval_charge[hit_index:hit_index+hold_length]
 
+                    print (recorded_waveform)
+                    
+                    # break down the waveform into its components
                     if self.readout_config['truth_tracking']['enabled']:
-                        threshold_crossing_charge_by_label = window_charge_by_label[hit_index,:]
-                        attribution_by_label = threshold_crossing_charge_by_label/threshold_crossing_charge
+                        recorded_waveform_by_label = interval_charge_by_label[hit_index:hit_index+hold_length,:]
+                        print (recorded_waveform_by_label)
+                        attribution_by_label = recorded_waveform_by_label/recorded_waveform[:,None]
+                        print (recorded_waveform_by_label.shape,
+                               attribution_by_label)
                     else:
                         labels = torch.zeros((0))
                         threshold_crossing_charge_by_label = torch.zeros((0))
                         attribution_by_label = torch.zeros((0))
 
+                        # if we're at the end of the charge distribution,
+                    # pad the charge series to the appropriate length
+                    if recorded_waveform.shape[0] < hold_length:
+                        diff = hold_length - recorded_waveform.shape[0]
+                        recorded_waveform = torch.cat((recorded_waveform,
+                                                       torch.zeros(diff)))
+                        attribution_by_label = torch.cat((attribution_by_label,
+                                                          torch.zeros(diff, labels.shape[0])))
+                        
                     if not nonoise:
-                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+                        recorded_waveform = torch.normal(recorded_waveform,
+                                                         torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
 
+                    # remove already measured charge so it does not
+                    # interfere with successive hits
                     interval_charge[:hit_index+hold_length] = 0
-
+                    
                     hits.append(CoarseGridSample(tile_tpc,
                                                  tile_center,
                                                  threshold_crossing_t.item(),
                                                  threshold_crossing_z.item(),
-                                                 threshold_crossing_charge.item(),
+                                                 recorded_waveform.cpu().numpy(),
                                                  attribution_by_label.cpu().numpy(),
                                                  labels.cpu().numpy()))
                 else:
@@ -774,17 +792,27 @@ class GAMPixModel (ReadoutModel):
                 if not nonoise:
                     interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
                 
-                for this_timestamp, this_interval_charge, this_attribution_by_label in zip(time_ticks, interval_charge, attribution_by_label):
-                    this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
+                # for this_timestamp, this_interval_charge, this_attribution_by_label in zip(time_ticks, interval_charge, attribution_by_label):
+                #     this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
 
-                    hits.append(PixelSample(pixel_tpc,
-                                            pixel_center,
-                                            this_timestamp.item(),
-                                            this_z.item(),
-                                            this_interval_charge.item(),
-                                            this_attribution_by_label.cpu().numpy(),
-                                            labels.cpu().numpy(),
-                                            ))
+                    # hits.append(PixelSample(pixel_tpc,
+                    #                         pixel_center,
+                    #                         this_timestamp.item(),
+                    #                         this_z.item(),
+                    #                         this_interval_charge.item(),
+                    #                         this_attribution_by_label.cpu().numpy(),
+                    #                         labels.cpu().numpy(),
+                    #                         ))
+                    
+                depth = time_ticks*self.physics_config['charge_drift']['drift_speed']
+                hits.append(PixelSample(pixel_tpc,
+                                        pixel_center,
+                                        time_ticks.cpu().numpy(),
+                                        depth.cpu().numpy(),
+                                        interval_charge.cpu().numpy(),
+                                        attribution_by_label.cpu().numpy(),
+                                        labels.cpu().numpy(),
+                                        ))
         track.pixel_samples = hits
         return hits 
 

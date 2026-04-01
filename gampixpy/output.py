@@ -1,8 +1,9 @@
 import h5py
 import numpy as np
 
-from gampixpy.readout_objects import coarse_tile_dtype, pixel_dtype
+from gampixpy.readout_objects import dtype_factory
 from gampixpy.input_parsing import meta_dtype
+from gampixpy import config
 
 class OutputManager:
     """
@@ -22,18 +23,20 @@ class OutputManager:
         Number of tracks written to the output file so far.
     
     """
-    def __init__(self, output_filename):
+    def __init__(self, output_filename, readout_config = config.default_readout_params):
         self.output_filename = output_filename
 
         self.outfile = h5py.File(output_filename, 'w')
 
+        self.coarse_tile_dtype, self.pixel_dtype = dtype_factory(readout_config)
+        
         self.outfile.create_dataset('coarse_hits',
                                     shape = (0,),
-                                    dtype = coarse_tile_dtype,
+                                    dtype = self.coarse_tile_dtype,
                                     maxshape = (None,))
         self.outfile.create_dataset('pixel_hits',
                                     shape = (0,),
-                                    dtype = pixel_dtype,
+                                    dtype = self.pixel_dtype,
                                     maxshape = (None,))
         self.outfile.create_dataset('meta',
                                     shape = (0,),

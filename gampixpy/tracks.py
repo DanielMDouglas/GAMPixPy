@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 
-from gampixpy.readout_objects import coarse_tile_dtype, pixel_dtype
+from gampixpy.readout_objects import dtype_factory
+from gampixpy import config
 
 class Track:
     """
@@ -49,7 +50,7 @@ class Track:
         self.pixel_samples = []
         self.coarse_tiles_samples = []
 
-    def to_array(self):
+    def to_array(self, readout_config = config.default_readout_params):
         """
         track.to_array()
 
@@ -58,7 +59,9 @@ class Track:
 
         Parameters
         ----------
-        None
+        readout_config : ReadoutConfig object
+            Config object containing specifications for tile and pixel size, gaps,
+            threshold, noise, etc.
 
         Returns
         -------
@@ -68,6 +71,8 @@ class Track:
             dtype described in readout_objects.coarse_tile_dtype.
 
         """
+        coarse_tile_dtype, pixel_dtype = dtype_factory(readout_config)
+        
         coarse_tile_sample_array = np.array([(0,
                                               hit.coarse_cell_tpc,
                                               hit.coarse_cell_pos[0],
