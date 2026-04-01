@@ -284,6 +284,35 @@ class EventDisplay:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection = '3d')
         # self.equal_aspect()
+
+    def set_focus(self, string):
+        """
+        evd.set_focus(string)
+
+        Sets the axis limits to contain a specific object.
+        Options are:
+        - 'coarse' : coarse tile hits
+        - 'pixels' : pixel hits
+        - 'charge' : ionized charge
+        - 'tpc' : detector boundaries
+
+        Parameers
+        ---------
+        string : str
+            String specifying which object focus
+        """
+
+        # NOT IMPLEMENTED YET
+        if string == 'coarse':
+            pass
+        elif string == 'pixels':
+            pass
+        elif string == 'charge':
+            pass
+        elif string == 'tpc':
+            pass
+        else:
+            pass
         
     def remove_guidelines(self):
         """
