@@ -398,3 +398,4 @@ class ConfigManager:
         """
         return
                  
+default_config_manager = ConfigManager()

@@ -23,12 +23,14 @@ class OutputManager:
         Number of tracks written to the output file so far.
     
     """
-    def __init__(self, output_filename, readout_config = config.default_readout_params):
+    def __init__(self, output_filename,
+                 config_manager = config.default_config_manager):
         self.output_filename = output_filename
 
         self.outfile = h5py.File(output_filename, 'w')
 
-        self.coarse_tile_dtype, self.pixel_dtype = dtype_factory(readout_config)
+        self.readout_config = config_manager.readout_config
+        self.coarse_tile_dtype, self.pixel_dtype = dtype_factory(self.readout_config)
         
         self.outfile.create_dataset('coarse_hits',
                                     shape = (0,),

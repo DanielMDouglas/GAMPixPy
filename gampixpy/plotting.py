@@ -1,4 +1,5 @@
 from gampixpy.coordinates import CoordinateManager
+from gampixpy.config import default_config_manager
 
 import math
 import numpy as np
@@ -143,9 +144,7 @@ def draw_box_from_corners(ax,
 def plot_coarse_hit(ax,
                     this_hit,
                     coordinate_manager,
-                    readout_config,
-                    physics_config,
-                    detector_config,
+                    config_manager,
                     z_offset = 0):
     cell_tpc = this_hit.coarse_cell_tpc
             
@@ -160,10 +159,12 @@ def plot_coarse_hit(ax,
     exp_coords = exp_coords.cpu().numpy()
             
     cell_measurement = this_hit.coarse_cell_measurement
+
+    coarse_tile_config = config_manager.readout_config['coarse_tiles']
     
-    pitch = readout_config['coarse_tiles']['pitch'],
+    pitch = coarse_tile_config['pitch'],
     
-    this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+    this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
     horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
     half_span_horizontal = horizontal_axis*pitch/2
 
@@ -171,8 +172,8 @@ def plot_coarse_hit(ax,
     half_span_vertical = vertical_axis*pitch/2
     
     drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
-    v = physics_config['charge_drift']['drift_speed']
-    cell_hit_length = v*readout_config['coarse_tiles']['clock_interval']*readout_config['coarse_tiles']['integration_length']
+    v = config_manager.physics_config['charge_drift']['drift_speed']
+    cell_hit_length = v*coarse_tile_config['clock_interval']*coarse_tile_config['integration_length']
     depth_span = drift_axis*cell_hit_length
     
     corners = [exp_coords - half_span_horizontal - half_span_vertical,
@@ -190,12 +191,9 @@ def plot_coarse_hit(ax,
                           **coarse_tile_hit_kwargs)
     
 def plot_pixel_hit(ax,
-                   this_hit\
-                   ,
+                   this_hit,
                    coordinate_manager,
-                   readout_config,
-                   physics_config,
-                   detector_config,
+                   config_manager,
                    z_offset = 0):
     cell_tpc = this_hit.pixel_tpc
 
@@ -211,9 +209,10 @@ def plot_pixel_hit(ax,
                                                              cell_tpc)[0]
         exp_coords = exp_coords.cpu().numpy()
 
-        pitch = readout_config['pixels']['pitch']
+        pixel_config = config_manager.readout_config['pixels']
+        pitch = pixel_config['pitch']
     
-        this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+        this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
         horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
         half_span_horizontal = horizontal_axis*pitch/2
     
@@ -221,8 +220,8 @@ def plot_pixel_hit(ax,
         half_span_vertical = vertical_axis*pitch/2
     
         drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
-        v = physics_config['charge_drift']['drift_speed']
-        cell_hit_length = v*readout_config['pixels']['clock_interval']
+        v = config_manager.physics_config['charge_drift']['drift_speed']
+        cell_hit_length = v*pixel_config['clock_interval']
         depth_span = drift_axis*cell_hit_length
 
         corners = [exp_coords - half_span_horizontal - half_span_vertical,
@@ -238,8 +237,9 @@ def plot_pixel_hit(ax,
         draw_box_from_corners(ax, corners,
                               **pixel_hit_kwargs)
 
-def plot_drift_volumes(ax, detector_config):
-    for volume_name, volume_dict in detector_config['drift_volumes'].items():
+def plot_drift_volumes(ax, config_manager):
+    volumes_dict = config_manager.detector_config['drift_volumes']
+    for volume_name, volume_dict in volumes_dict.items():
         corners = [corner.cpu() for corner in 
                    volume_dict['anode_corners'] + volume_dict['cathode_corners']]
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
@@ -276,8 +276,13 @@ class EventDisplay:
 
     """
     MAX_POINTS_PLOTTED = 1e3
-    def __init__(self, track):
+    def __init__(self, track,
+                 config_manager = default_config_manager):
+
+        self.config_manager = config_manager
+
         self.track_object = track
+
         self._init_fig()
         
     def _init_fig(self):
@@ -422,18 +427,11 @@ class EventDisplay:
 
         self.set_label_axes()
 
-    def plot_drifted_track(self, detector_config, **kwargs):
+    def plot_drifted_track(self, **kwargs):
         """
         evd.plot_drifted_track(**kwargs)
 
         Plot the point sample representation of the drifted track.
-
-        Parameters
-        ----------
-        detector_config : DetectorConfig object
-            The detector config specifying the location and size of drift
-            volumes in the geometry.  This should match the readout config
-            used in the simulation step for this track.
 
         Notes
         -----
@@ -442,7 +440,7 @@ class EventDisplay:
         """
 
         n_points = self.track_object.drifted_track['position'].shape[0]
-        coordinate_manager = CoordinateManager(detector_config)
+        coordinate_manager = CoordinateManager(self.config_manager)
         coords = coordinate_manager.to_experiment_coords(self.track_object.drifted_track['position'],
                                                          self.track_object.tpc_track['TPC_index'])
         if n_points > self.MAX_POINTS_PLOTTED:
@@ -464,95 +462,54 @@ class EventDisplay:
 
         self.set_label_axes()
 
-    def plot_coarse_tile_measurement(self, readout_config, physics_config, detector_config):
+    def plot_coarse_tile_measurement(self):
         """
         evd.plot_coarse_tile_measurement(readout_config)
 
         Plot the simulated coarse hits for an input track.
-
-        Parameters
-        ----------
-        readout_config : ReadoutConfig object
-            The readout config specifying the coarse tile pitch, clock
-            interval, etc.  This should match the readout config used in
-            the simulation step for this track.
-        physics_config : PhysicsConfig object
-            The physics config specifying physics parameters. This should
-            match the physics config used in the simulation step for this
-            track.
-        detector_config : DetectorConfig object
-            The detector config specifying the location and size of drift
-            volumes in the geometry.  This should match the readout config
-            used in the simulation step for this track.
-
+        
         """
 
-        coordinate_manager = CoordinateManager(detector_config)
+        coordinate_manager = CoordinateManager(self.config_manager)
         
         for this_hit in self.track_object.coarse_tiles_samples:
             plot_coarse_hit(self.ax,
                             this_hit,
                             coordinate_manager,
-                            readout_config,
-                            physics_config,
-                            detector_config,
+                            self.config_manager,
                             )
             
         self.set_label_axes()
         
-    def plot_pixel_measurement(self, readout_config, physics_config, detector_config):
+    def plot_pixel_measurement(self):
         """
         evd.plot_pixel_measurement(readout_config)
 
         Plot the simulated pixel hits for an input track.
 
-        Parameters
-        ----------
-        readout_config : ReadoutConfig object
-            The readout config specifying the coarse tile pitch, clock
-            interval, etc.  This should match the readout config used in
-            the simulation step for this track.
-        physics_config : PhysicsConfig object
-            The physics config specifying physics parameters. This should
-            match the physics config used in the simulation step for this
-            track.
-        detector_config : DetectorConfig object
-            The detector config specifying the location and size of drift
-            volumes in the geometry.  This should match the readout config
-            used in the simulation step for this track.
-
         """
 
-        coordinate_manager = CoordinateManager(detector_config)
+        coordinate_manager = CoordinateManager(self.config_manager)
 
         for this_hit in self.track_object.pixel_samples:
             plot_pixel_hit(self.ax,
                            this_hit,
                            coordinate_manager,
-                           readout_config,
-                           physics_config,
-                           detector_config,
+                           self.config_manager,
                            )
             
         self.set_label_axes()
 
-    def plot_drift_volumes(self, detector_config):
+    def plot_drift_volumes(self):
         """
         evd.plot_drift_volumes(detector_config)
 
         Plot the boundaries of the drift volumes as specified in a
         detector configuration file.
 
-        Parameters
-        ----------
-        detector_config : DetectorConfig object
-            The detector config specifying the location and size of drift
-            volumes in the geometry.  This should match the readout config
-            used in the simulation step for this track.
-
         """
 
         plot_drift_volumes(self.ax,
-                           detector_config)
+                           self.config_manager.detector_config)
 
         self.set_label_axes()

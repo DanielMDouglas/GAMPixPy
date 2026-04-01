@@ -1,4 +1,4 @@
-from gampixpy.config import default_detector_params, default_physics_params, default_readout_params
+from gampixpy.config import default_config_manager
 from gampixpy.readout_objects import PixelSample, CoarseGridSample
 from gampixpy.coordinates import CoordinateManager
 
@@ -8,7 +8,7 @@ import torchist
 
 class ReadoutModel:
     """
-    ReadoutModel(readout_config)
+    ReadoutModel
 
     Parent class for readout models.  This class defines the process of
     taking drifted point clouds and forming current series for each coarse
@@ -46,14 +46,12 @@ class ReadoutModel:
 
     """
     def __init__(self,
-                 readout_config = default_readout_params,
-                 physics_config = default_physics_params,
-                 detector_config = default_detector_params):
-        self.readout_config = readout_config
-        self.physics_config = physics_config
-        self.detector_config = detector_config
+                 config_manager = default_config_manager):
+        self.readout_config = config_manager.readout_config
+        self.physics_config = config_manager.physics_config
+        self.detector_config = config_manager.detector_config
 
-        self.coordinate_manager = CoordinateManager(detector_config)
+        self.coordinate_manager = CoordinateManager(config_manager)
 
         self.clock_start_time = 0
 
@@ -995,37 +993,30 @@ class LArPixModel (ReadoutModel):
 
 class DetectorModel:
     """
-    DetectorModel(detector_params,
-                  physics_params,
-                  readout_params)
+    DetectorModel(config_manager)
 
     Detector model class.  This class defines the overall flow of simulation for
     charges within the detector volume.
 
     Attributes
     ----------
-    detector_params : DetectorConfig
-    physics_params : PhysicsConfig
-    readout_params : ReadoutConfig
+    detector_config : DetectorConfig
+    physics_config : PhysicsConfig
+    readout_config : ReadoutConfig
     readout_model : ReadoutModel object
     
     """
     def __init__(self,
-                 detector_params = default_detector_params,
-                 physics_params = default_physics_params,
-                 readout_params = default_readout_params):
+                 config_manager = default_config_manager):
 
-        self.detector_params = detector_params
-        self.physics_params = physics_params
-        self.readout_params = readout_params
+        self.detector_config = config_manager.detector_config
+        self.physics_config = config_manager.physics_config
+        self.readout_config = config_manager.readout_config
 
-        self.coordinate_manager = CoordinateManager(detector_params)
+        self.coordinate_manager = CoordinateManager(config_manager)
         
-        self.readout_model = GAMPixModel(readout_config = readout_params,
-                                         physics_config = physics_params,
-                                         detector_config = detector_params,
-                                         )
-        # self.readout_model = LArPixModel(readout_params)
+        self.readout_model = GAMPixModel(config_manager)
+        # self.readout_model = LArPixModel(readout_config)
 
     def simulate(self, track, **kwargs):
         """
@@ -1047,7 +1038,7 @@ class DetectorModel:
         detector.drift(sampled_track, **kwargs)
 
         Drift the charge samples from their input position
-        to the anode position as defined by detector_params.
+        to the anode position as defined by detector_config.
         Save the drifted positions to the track object.
 
         Parameters
@@ -1064,15 +1055,15 @@ class DetectorModel:
         self.coordinate_manager.generate_tpc_coords(sampled_track)
         
         # z-component is the distance to the anode
-        drift_time = sampled_track.tpc_track['position'][:,2]/self.physics_params['charge_drift']['drift_speed'] # s
+        drift_time = sampled_track.tpc_track['position'][:,2]/self.physics_config['charge_drift']['drift_speed'] # s
 
         # D according to https://lar.bnl.gov/properties/trans.html#diffusion-l
         # sigma = sqrt(2*D*t)
 
         # use the nominal drift time to calculate diffusion
         # then, add the appropriate arrival time dispersion later
-        sigma_transverse = torch.sqrt(2*self.physics_params['charge_drift']['diffusion_transverse']*drift_time)
-        sigma_longitudinal = torch.sqrt(2*self.physics_params['charge_drift']['diffusion_longitudinal']*drift_time)
+        sigma_transverse = torch.sqrt(2*self.physics_config['charge_drift']['diffusion_transverse']*drift_time)
+        sigma_longitudinal = torch.sqrt(2*self.physics_config['charge_drift']['diffusion_longitudinal']*drift_time)
 
         diffusion_sigma = torch.stack((sigma_transverse,
                                        sigma_transverse,
@@ -1088,10 +1079,10 @@ class DetectorModel:
                                              diffusion_sigma)
 
         # charge is diminished by attenuation
-        drifted_charges = sampled_track.tpc_track['charge']*torch.exp(-drift_time/self.physics_params['charge_drift']['electron_lifetime'])
+        drifted_charges = sampled_track.tpc_track['charge']*torch.exp(-drift_time/self.physics_config['charge_drift']['electron_lifetime'])
 
         # add dispersion to the arrival of charge due to longitudinal diffusion
-        time_dispersion = (drifted_positions[:, 2] - sampled_track.tpc_track['position'][:, 2])/self.physics_params['charge_drift']['drift_speed'] 
+        time_dispersion = (drifted_positions[:, 2] - sampled_track.tpc_track['position'][:, 2])/self.physics_config['charge_drift']['drift_speed'] 
 
         arrival_time = drift_time + sampled_track.tpc_track['time'] + time_dispersion
 

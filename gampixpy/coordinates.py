@@ -10,7 +10,7 @@ else:
 
 class CoordinateManager:
     """
-    CoordinateManager()
+    CoordinateManager(config_manager = default_config_manager)
 
     Class for transforming external coordinate systems into the internal
     coordinate system.
@@ -19,8 +19,8 @@ class CoordinateManager:
     ----------
     
     """
-    def __init__(self, detector_config):
-        self.detector_config = detector_config
+    def __init__(self, config_manager):
+        self.detector_config = config_manager.detector_config
 
         # dictionaries for translating from volume name stings to an internal index
         keylist = list(self.detector_config['drift_volumes'].keys())
