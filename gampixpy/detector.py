@@ -687,16 +687,12 @@ class GAMPixModel (ReadoutModel):
                     threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
                     
                     recorded_waveform = interval_charge[hit_index:hit_index+hold_length]
-
-                    print (recorded_waveform)
+                    waveform_ticks = time_ticks[hit_index:hit_index+hold_length]
                     
                     # break down the waveform into its components
                     if self.readout_config['truth_tracking']['enabled']:
                         recorded_waveform_by_label = interval_charge_by_label[hit_index:hit_index+hold_length,:]
-                        print (recorded_waveform_by_label)
                         attribution_by_label = recorded_waveform_by_label/recorded_waveform[:,None]
-                        print (recorded_waveform_by_label.shape,
-                               attribution_by_label)
                     else:
                         labels = torch.zeros((0))
                         threshold_crossing_charge_by_label = torch.zeros((0))
@@ -710,6 +706,8 @@ class GAMPixModel (ReadoutModel):
                                                        torch.zeros(diff)))
                         attribution_by_label = torch.cat((attribution_by_label,
                                                           torch.zeros(diff, labels.shape[0])))
+                        waveform_ticks = torch.cat((waveform_ticks,
+                                                    torch.zeros(diff)))
                         
                     if not nonoise:
                         recorded_waveform = torch.normal(recorded_waveform,
@@ -723,6 +721,7 @@ class GAMPixModel (ReadoutModel):
                                                  tile_center,
                                                  threshold_crossing_t.item(),
                                                  threshold_crossing_z.item(),
+                                                 waveform_ticks.cpu().numpy(),
                                                  recorded_waveform.cpu().numpy(),
                                                  attribution_by_label.cpu().numpy(),
                                                  labels.cpu().numpy()))
@@ -790,25 +789,14 @@ class GAMPixModel (ReadoutModel):
                     attribution_by_label = torch.zeros((interval_charge.shape[0], 0))
                     
                 if not nonoise:
-                    interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
-                
-                # for this_timestamp, this_interval_charge, this_attribution_by_label in zip(time_ticks, interval_charge, attribution_by_label):
-                #     this_z = this_timestamp*self.physics_config['charge_drift']['drift_speed'] 
-
-                    # hits.append(PixelSample(pixel_tpc,
-                    #                         pixel_center,
-                    #                         this_timestamp.item(),
-                    #                         this_z.item(),
-                    #                         this_interval_charge.item(),
-                    #                         this_attribution_by_label.cpu().numpy(),
-                    #                         labels.cpu().numpy(),
-                    #                         ))
+                    interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))                
                     
                 depth = time_ticks*self.physics_config['charge_drift']['drift_speed']
                 hits.append(PixelSample(pixel_tpc,
                                         pixel_center,
-                                        time_ticks.cpu().numpy(),
+                                        time_ticks.cpu().numpy()[0],
                                         depth.cpu().numpy(),
+                                        time_ticks.cpu().numpy(),
                                         interval_charge.cpu().numpy(),
                                         attribution_by_label.cpu().numpy(),
                                         labels.cpu().numpy(),

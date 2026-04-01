@@ -40,6 +40,7 @@ class PixelSample:
                 pixel_pos,
                 hit_timestamp,
                 hit_depth,
+                hit_timeticks,
                 hit_measurement)
 
     Data container class for pixel samples.
@@ -65,13 +66,17 @@ class PixelSample:
                  pixel_pos,
                  hit_timestamp,
                  hit_depth,
+                 hit_timeticks,
                  hit_measurement,
                  attribution,
                  labels):
         self.pixel_tpc = pixel_tpc
         self.pixel_pos = pixel_pos
+        # threshold crossing time
         self.hit_timestamp = hit_timestamp
         self.hit_depth = hit_depth
+        # waveform time ticks
+        self.hit_timeticks = hit_timeticks
         self.hit_measurement = hit_measurement
 
         # # save the N_LABELS_PIX highest contributing labels
@@ -91,8 +96,8 @@ class PixelSample:
         #     if i < N_LABELS_PIX:
         #         self.attribution[i] = attribution[sorted_ind]
         #         self.labels[i] = labels[sorted_ind]
-        print (attribution.shape)
-        print (labels.shape)
+        self.attribution = attribution
+        self.labels = labels
 
     @classmethod
     def from_numpy(cls, array):
@@ -111,6 +116,7 @@ class CoarseGridSample:
                      coarse_cell_pos,
                      hit_timestamp,
                      hit_depth,
+                     hit_timeticks,
                      hit_measurement,
                      attribution,
                      labels)
@@ -138,13 +144,16 @@ class CoarseGridSample:
                  coarse_cell_pos,
                  measurement_time,
                  measurement_depth,
+                 hit_timeticks,
                  coarse_cell_measurement,
                  attribution,
                  labels):
         self.coarse_cell_tpc = coarse_cell_tpc
         self.coarse_cell_pos = coarse_cell_pos
+        # threshold crossing time
         self.coarse_measurement_time = measurement_time
         self.coarse_measurement_depth = measurement_depth
+        self.hit_timeticks = hit_timeticks
         self.coarse_cell_measurement = coarse_cell_measurement
         
         # save the N_LABELS_COARSE highest contributing labels
@@ -156,8 +165,8 @@ class CoarseGridSample:
         #     if i < N_LABELS_COARSE:
         #         self.attribution[i] = attribution[sorted_ind]
         #         self.labels[i] = labels[sorted_ind]
-        print (attribution.shape)
-        print (labels.shape)
+        self.attribution = attribution
+        self.labels = labels
 
     @classmethod
     def from_numpy(cls, array):

@@ -190,7 +190,8 @@ def plot_coarse_hit(ax,
                           **coarse_tile_hit_kwargs)
     
 def plot_pixel_hit(ax,
-                   this_hit,
+                   this_hit\
+                   ,
                    coordinate_manager,
                    readout_config,
                    physics_config,
@@ -199,42 +200,43 @@ def plot_pixel_hit(ax,
     cell_tpc = this_hit.pixel_tpc
 
     cell_center_xy = this_hit.pixel_pos
-    cell_center_z = this_hit.hit_depth
+    cell_z_series = this_hit.hit_depth
 
-    tpc_coords = torch.tensor([cell_center_xy[0],
-                               cell_center_xy[1],
-                               cell_center_z + z_offset])
+    for cell_center_z in cell_z_series:
+        tpc_coords = torch.tensor([cell_center_xy[0],
+                                   cell_center_xy[1],
+                                   cell_center_z + z_offset])
 
-    exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
-                                                         cell_tpc)[0]
-    exp_coords = exp_coords.cpu().numpy()
+        exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
+                                                             cell_tpc)[0]
+        exp_coords = exp_coords.cpu().numpy()
 
-    pitch = readout_config['pixels']['pitch']
+        pitch = readout_config['pixels']['pitch']
     
-    this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
-    horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
-    half_span_horizontal = horizontal_axis*pitch/2
+        this_volume_dict = detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+        horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
+        half_span_horizontal = horizontal_axis*pitch/2
     
-    vertical_axis = this_volume_dict['anode_vertical'].cpu().numpy()
-    half_span_vertical = vertical_axis*pitch/2
+        vertical_axis = this_volume_dict['anode_vertical'].cpu().numpy()
+        half_span_vertical = vertical_axis*pitch/2
     
-    drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
-    v = physics_config['charge_drift']['drift_speed']
-    cell_hit_length = v*readout_config['pixels']['clock_interval']
-    depth_span = drift_axis*cell_hit_length
+        drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
+        v = physics_config['charge_drift']['drift_speed']
+        cell_hit_length = v*readout_config['pixels']['clock_interval']
+        depth_span = drift_axis*cell_hit_length
 
-    corners = [exp_coords - half_span_horizontal - half_span_vertical,
-               exp_coords - half_span_horizontal + half_span_vertical,
-               exp_coords + half_span_horizontal - half_span_vertical,
-               exp_coords + half_span_horizontal + half_span_vertical,
-               exp_coords - half_span_horizontal - half_span_vertical + depth_span,
-               exp_coords - half_span_horizontal + half_span_vertical + depth_span,
-               exp_coords + half_span_horizontal - half_span_vertical + depth_span,
-               exp_coords + half_span_horizontal + half_span_vertical + depth_span,
-              ]
+        corners = [exp_coords - half_span_horizontal - half_span_vertical,
+                   exp_coords - half_span_horizontal + half_span_vertical,
+                   exp_coords + half_span_horizontal - half_span_vertical,
+                   exp_coords + half_span_horizontal + half_span_vertical,
+                   exp_coords - half_span_horizontal - half_span_vertical + depth_span,
+                   exp_coords - half_span_horizontal + half_span_vertical + depth_span,
+                   exp_coords + half_span_horizontal - half_span_vertical + depth_span,
+                   exp_coords + half_span_horizontal + half_span_vertical + depth_span,
+                   ]
 
-    draw_box_from_corners(ax, corners,
-                         **pixel_hit_kwargs)
+        draw_box_from_corners(ax, corners,
+                              **pixel_hit_kwargs)
 
 def plot_drift_volumes(ax, detector_config):
     for volume_name, volume_dict in detector_config['drift_volumes'].items():
