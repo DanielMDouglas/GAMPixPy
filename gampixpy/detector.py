@@ -792,6 +792,7 @@ class GAMPixModel (ReadoutModel):
                     interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))                
                     
                 depth = time_ticks*self.physics_config['charge_drift']['drift_speed']
+
                 hits.append(PixelSample(pixel_tpc,
                                         pixel_center,
                                         time_ticks.cpu().numpy()[0],
