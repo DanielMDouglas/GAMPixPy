@@ -26,8 +26,7 @@ def dtype_factory(readout_config = config.default_readout_params):
     truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
-    print ("twl", n_labels, tile_waveform_length)
-
+    
     if truth_tracking:
         tile_dtype = np.dtype([("event id", "u4"),
                                ("tile tpc", "u4"),
