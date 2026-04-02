@@ -510,6 +510,6 @@ class EventDisplay:
         """
 
         plot_drift_volumes(self.ax,
-                           self.config_manager.detector_config)
+                           self.config_manager)
 
         self.set_label_axes()

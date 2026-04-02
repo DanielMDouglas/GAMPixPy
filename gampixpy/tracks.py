@@ -73,28 +73,51 @@ class Track:
         """
         tile_dtype, pixel_dtype = dtype_factory(readout_config)
 
-        coarse_tile_sample_array = np.array([(0,
-                                              tile_record.tile_tpc,
-                                              tile_record.tile_pos[0],
-                                              tile_record.tile_pos[1],
-                                              tile_record.trigger_depth,
-                                              tile_record.trigger_time,
-                                              tile_record.waveform,
-                                              tile_record.attribution,
-                                              tile_record.labels)
-                                             for tile_record in self.coarse_tiles_samples],
-                                            dtype = tile_dtype)
-        pixel_sample_array = np.array([(0,
-                                        pixel_record.pixel_tpc,
-                                        pixel_record.pixel_pos[0],
-                                        pixel_record.pixel_pos[1],
-                                        pixel_record.trigger_depth[0],
-                                        pixel_record.trigger_time,
-                                        pixel_record.waveform,
-                                        pixel_record.attribution,
-                                        pixel_record.labels)
-                                       for pixel_record in self.pixel_samples],
-                                      dtype = pixel_dtype)
+        truth_tracking = readout_config['truth_tracking']['enabled']
+        if truth_tracking:
+            coarse_tile_sample_array = np.array([(0,
+                                                  tile_record.tile_tpc,
+                                                  tile_record.tile_pos[0],
+                                                  tile_record.tile_pos[1],
+                                                  tile_record.trigger_depth,
+                                                  tile_record.trigger_time,
+                                                  tile_record.waveform,
+                                                  tile_record.attribution,
+                                                  tile_record.labels)
+                                                 for tile_record in self.coarse_tiles_samples],
+                                                dtype = tile_dtype)
+            pixel_sample_array = np.array([(0,
+                                            pixel_record.pixel_tpc,
+                                            pixel_record.pixel_pos[0],
+                                            pixel_record.pixel_pos[1],
+                                            pixel_record.trigger_depth[0],
+                                            pixel_record.trigger_time,
+                                            pixel_record.waveform,
+                                            pixel_record.attribution,
+                                            pixel_record.labels)
+                                           for pixel_record in self.pixel_samples],
+                                          dtype = pixel_dtype)
+
+        else:
+            coarse_tile_sample_array = np.array([(0,
+                                                  tile_record.tile_tpc,
+                                                  tile_record.tile_pos[0],
+                                                  tile_record.tile_pos[1],
+                                                  tile_record.trigger_depth,
+                                                  tile_record.trigger_time,
+                                                  tile_record.waveform)
+                                                 for tile_record in self.coarse_tiles_samples],
+                                                dtype = tile_dtype)
+            pixel_sample_array = np.array([(0,
+                                            pixel_record.pixel_tpc,
+                                            pixel_record.pixel_pos[0],
+                                            pixel_record.pixel_pos[1],
+                                            pixel_record.trigger_depth[0],
+                                            pixel_record.trigger_time,
+                                            pixel_record.waveform)
+                                           for pixel_record in self.pixel_samples],
+                                          dtype = pixel_dtype)
+
 
         return coarse_tile_sample_array, pixel_sample_array
 

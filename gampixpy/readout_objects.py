@@ -23,40 +23,65 @@ def dtype_factory(readout_config = config.default_readout_params):
         dtype objects specifying how record info is stored in a binary array.
     """
     
+    truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
-    print ("twl", tile_waveform_length)
+    print ("twl", n_labels, tile_waveform_length)
 
-    tile_dtype = np.dtype([("event id", "u4"),
-                           ("tile tpc", "u4"),
-                           ("tile x", "f4"),
-                           ("tile y", "f4"),
-                           ("trig z", "f4"),
-                           ("trig t", "f4"),
-                           ("waveform", "f4",
-                            tile_waveform_length),
-                           ("attribution", "f4",
-                            (tile_waveform_length,
-                             n_labels)),
-                           ("label", "i4", n_labels),
-                           ],
-                          align = True)
+    if truth_tracking:
+        tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile tpc", "u4"),
+                               ("tile x", "f4"),
+                               ("tile y", "f4"),
+                               ("trig z", "f4"),
+                               ("trig t", "f4"),
+                               ("waveform", "f4",
+                                tile_waveform_length),
+                               ("attribution", "f4",
+                                (tile_waveform_length,
+                                 n_labels)),
+                               ("label", "i4", n_labels),
+                               ],
+                              align = True)
 
-    pixel_dtype = np.dtype([("event id", "u4"),
-                            ("pixel tpc", "u4"),
-                            ("pixel x", "f4"),
-                            ("pixel y", "f4"),
-                            ("trig z", "f4"),
-                            ("trig t", "f4"),
-                            ("waveform", "f4",
-                             tile_waveform_length),
-                            ("attribution", "f4",
-                             (tile_waveform_length,
-                              n_labels)),
-                            ("label", "i4", n_labels),
-                            ],
-                           align = True)
-    return tile_dtype, pixel_dtype
+        pixel_dtype = np.dtype([("event id", "u4"),
+                                ("pixel tpc", "u4"),
+                                ("pixel x", "f4"),
+                                ("pixel y", "f4"),
+                                ("trig z", "f4"),
+                                ("trig t", "f4"),
+                                ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("attribution", "f4",
+                                 (tile_waveform_length,
+                                  n_labels)),
+                                ("label", "i4", n_labels),
+                                ],
+                               align = True)
+    else:
+        tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile tpc", "u4"),
+                               ("tile x", "f4"),
+                               ("tile y", "f4"),
+                               ("trig z", "f4"),
+                               ("trig t", "f4"),
+                               ("waveform", "f4",
+                                tile_waveform_length),
+                               ],
+                              align = True)
+
+        pixel_dtype = np.dtype([("event id", "u4"),
+                                ("pixel tpc", "u4"),
+                                ("pixel x", "f4"),
+                                ("pixel y", "f4"),
+                                ("trig z", "f4"),
+                                ("trig t", "f4"),
+                                ("waveform", "f4",
+                                 tile_waveform_length),
+                                ],
+                               align = True)
+        
+        return tile_dtype, pixel_dtype
 
 def pixel_record_factory(readout_config = config.default_readout_params):
     """
@@ -77,6 +102,7 @@ def pixel_record_factory(readout_config = config.default_readout_params):
 
     """
 
+    truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
 
@@ -117,6 +143,7 @@ def pixel_record_factory(readout_config = config.default_readout_params):
             Label classes corresponding to each column of attribution array.
         """
 
+        _truth_tracking = truth_tracking
         _n_labels = n_labels
         _tile_waveform_length = tile_waveform_length
         
@@ -136,18 +163,22 @@ def pixel_record_factory(readout_config = config.default_readout_params):
             self.timeticks = timeticks
             self.waveform = waveform
 
-            # save the _n_label highest contributing labels
-            # if tere are fewer than _n_labels, label is 0
-            # and fraction is 0
-            self.attribution = np.zeros((self._tile_waveform_length,
-                                         self._n_labels))
-            self.labels = NULL_LABEL*np.ones(self._n_labels)
-            total_charge_by_label = np.sum(attribution*waveform[:,None], axis = 0)
-            for i, sorted_ind in enumerate(np.argsort(total_charge_by_label)[::-1]):
-                if i < self._n_labels:
-                    self.attribution[:,i] = attribution[:,sorted_ind]
-                    self.labels[i] = labels[sorted_ind]
-
+            if self._truth_tracking:
+                # save the _n_label highest contributing labels
+                # if tere are fewer than _n_labels, label is 0
+                # and fraction is 0
+                self.attribution = np.zeros((self._tile_waveform_length,
+                                             self._n_labels))
+                self.labels = NULL_LABEL*np.ones(self._n_labels)
+                total_charge_by_label = np.sum(attribution*waveform[:,None], axis = 0)
+                for i, sorted_ind in enumerate(np.argsort(total_charge_by_label)[::-1]):
+                    if i < self._n_labels:
+                        self.attribution[:,i] = attribution[:,sorted_ind]
+                        self.labels[i] = labels[sorted_ind]
+            else:
+                self.attribution = attribution
+                self.labels = labels
+                        
         @classmethod
         def from_numpy(cls, array):
             return cls(array['pixel tpc'],
@@ -180,7 +211,12 @@ def tile_record_factory(readout_config = config.default_readout_params):
 
     """
     
-    n_labels = readout_config['truth_tracking']['n_labels']
+    truth_tracking = readout_config['truth_tracking']['enabled']
+    if truth_tracking:
+        n_labels = readout_config['truth_tracking']['n_labels']
+    else:
+        n_labels = 0
+
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
 
     class TileRecord:
@@ -220,6 +256,7 @@ def tile_record_factory(readout_config = config.default_readout_params):
             Label classes corresponding to each column of attribution array.
         """
 
+        _truth_tracking = truth_tracking
         _n_labels = n_labels
         _tile_waveform_length = tile_waveform_length
 
@@ -242,15 +279,20 @@ def tile_record_factory(readout_config = config.default_readout_params):
             # save the _n_label highest contributing labels
             # if tere are fewer than _n_labels, label is 0
             # and fraction is 0
-            self.attribution = np.zeros((self._tile_waveform_length,
-                                         self._n_labels))
-            self.labels = NULL_LABEL*np.ones(self._n_labels)
-            total_charge_by_label = np.sum(attribution*waveform[:,None], axis = 0)
-            for i, sorted_ind in enumerate(np.argsort(total_charge_by_label)[::-1]):
-                if i < self._n_labels:
-                    self.attribution[:,i] = attribution[:,sorted_ind]
-                    self.labels[i] = labels[sorted_ind]
-
+            
+            if self._truth_tracking:
+                self.attribution = np.zeros((self._tile_waveform_length,
+                                             self._n_labels))
+                self.labels = NULL_LABEL*np.ones(self._n_labels)
+                total_charge_by_label = np.sum(attribution*waveform[:,None], axis = 0)
+                for i, sorted_ind in enumerate(np.argsort(total_charge_by_label)[::-1]):
+                    if i < self._n_labels:
+                        self.attribution[:,i] = attribution[:,sorted_ind]
+                        self.labels[i] = labels[sorted_ind]
+            else:
+                self.attribution = attribution
+                self.labels = labels
+                        
         @classmethod
         def from_numpy(cls, array):
             return cls(array['tile tpc'],
