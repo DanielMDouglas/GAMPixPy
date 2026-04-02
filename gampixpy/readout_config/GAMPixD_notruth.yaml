@@ -1,5 +1,6 @@
 truth_tracking:
   enabled: False
+  n_labels: 0
 
 coarse_tiles:
   type: coarse_tiles

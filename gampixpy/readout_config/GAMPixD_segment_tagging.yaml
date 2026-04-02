@@ -1,6 +1,7 @@
 truth_tracking:
   enabled: True
   label: segment
+  n_labels: 3
 
 coarse_tiles:
   type: coarse_tiles

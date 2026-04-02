@@ -19,31 +19,18 @@ def main(args):
 
     # load configs for physics, detector, and readout
 
-    if args.detector_config == "":
-        detector_config = config.default_detector_params
-    else:
-        detector_config = config.DetectorConfig(args.detector_config)
+    conf = config.ConfigManager(detector_config = args.detector_config,
+                                physics_config = args.physics_config,
+                                readout_config = args.readout_config,
+                                )
 
-    if args.physics_config == "":
-        physics_config = config.default_physics_params
-    else:
-        physics_config = config.PhysicsConfig(args.physics_config)
-
-    if args.readout_config == "":
-        readout_config = config.default_readout_params
-    else:
-        readout_config = config.ReadoutConfig(args.readout_config)
-
-    detector_model = detector.DetectorModel(detector_params = detector_config,
-                                            physics_params = physics_config,
-                                            readout_params = readout_config,
-                                            )
+    detector_model = detector.DetectorModel(config_manager = conf)
 
     # choose the correct input parser using the provided args
     # default value for `args.input_format` is 'edepsim'
     # so this will create an EdepSimParser object and expect hdf5 input
     input_parser = input_parsing.parser_dict[args.input_format](args.input_file,
-                                                                readout_config = readout_config)
+                                                                config_manager = conf)
 
     event_data = input_parser.get_sample(args.event_index)
     # can also filter segments from the input to keep only specific pdg codes
@@ -65,7 +52,8 @@ def main(args):
     # print (event_data.drifted_track) # track after drifting (diffusion, attenuation)
 
     # make the event display
-    evd = plotting.EventDisplay(event_data)
+    evd = plotting.EventDisplay(event_data,
+                                config_manager = conf)
 
     evd.plot_raw_track() 
     # evd.plot_drifted_track()
@@ -73,18 +61,12 @@ def main(args):
     # methods where the z-axis is readout time
     # evd.plot_drifted_track_timeline()
     # evd.plot_drifted_track_timeline(alpha = 0) # can also pass kwargs to plt.scatter
-    evd.plot_coarse_tile_measurement(readout_config,
-                                     physics_config,
-                                     detector_config,
-                                     ) # plot tile hits
-    evd.plot_pixel_measurement(readout_config,
-                               physics_config,
-                               detector_config,
-                               ) # plot pixel hits
-    # evd.plot_coarse_tile_measurement_timeline(readout_config) # plot tile hits
-    # evd.plot_pixel_measurement_timeline(readout_config) # plot pixel hits
+    evd.plot_coarse_tile_measurement() # plot tile hits
+    evd.plot_pixel_measurement() # plot pixel hits
+    # evd.plot_coarse_tile_measurement_timeline() # plot tile hits
+    # evd.plot_pixel_measurement_timeline() # plot pixel hits
 
-    evd.plot_drift_volumes(detector_config)
+    evd.plot_drift_volumes()
     
     evd.show()
 
@@ -92,7 +74,8 @@ def main(args):
 
     # save the simulation products to an hdf5 file
     if args.output_file:
-        om = output.OutputManager(args.output_file)
+        om = output.OutputManager(args.output_file,
+                                  config_manager = conf)
         om.add_entry(event_data, event_meta)
 
     return
@@ -123,15 +106,15 @@ if __name__ == '__main__':
 
     parser.add_argument('-d', '--detector_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'detector configuration yaml')
     parser.add_argument('-p', '--physics_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'physics configuration yaml')
     parser.add_argument('-r', '--readout_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'readout configuration yaml')
 
     args = parser.parse_args()

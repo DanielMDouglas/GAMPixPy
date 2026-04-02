@@ -13,9 +13,9 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-class Config (dict):
+class AbstractConfig (dict):
     """
-    Config(config_filename)
+    AbstractConfig(config_filename)
 
     Initialize a new config dict from a yaml file.  This class serves
     as the parent class for specialized config classes for detector,
@@ -32,7 +32,7 @@ class Config (dict):
 
     Returns
     -------
-    out : Config
+    out : AbstractConfig
         A dict-like object containing input and derived parameters.
 
     See Also
@@ -45,7 +45,7 @@ class Config (dict):
 
     Examples
     --------
-    >>> c = Config('path/to/config.yaml')
+    >>> c = AbstractConfig('path/to/config.yaml')
 
     """
     def __init__(self, config_filename):
@@ -79,7 +79,7 @@ class Config (dict):
 
         return resolved_dict
 
-class DetectorConfig (Config):
+class DetectorConfig (AbstractConfig):
     """
     DetectorConfig(config_filename)
 
@@ -102,7 +102,7 @@ class DetectorConfig (Config):
 
     See Also
     --------
-    Config : Parent config class which does not computation of derived
+    AbstractConfig : Parent config class which does not computation of derived
              parameters.
     PhysicsConfig : Similar config class for parsing parameters for
                     physics processes (recombination, charge mobility,
@@ -183,7 +183,7 @@ class DetectorConfig (Config):
         
         return
 
-class PhysicsConfig (Config):
+class PhysicsConfig (AbstractConfig):
     """
     PhysicsConfig(config_filename)
 
@@ -206,7 +206,7 @@ class PhysicsConfig (Config):
 
     See Also
     --------
-    Config : Parent config class which does not computation of derived
+    AbstractConfig : Parent config class which does not computation of derived
              parameters.
     DetectorConfig : Similar config class for parsing parameters for
                      detector geometry and steering.
@@ -224,7 +224,7 @@ class PhysicsConfig (Config):
 
         return
 
-class ReadoutConfig (Config):
+class ReadoutConfig (AbstractConfig):
     """
     ReadoutConfig(config_filename)
 
@@ -247,7 +247,7 @@ class ReadoutConfig (Config):
 
     See Also
     --------
-    Config : Parent config class which does not computation of derived
+    AbstractConfig : Parent config class which does not computation of derived
              parameters.
     DetectorConfig : Similar config class for parsing parameters for
                      detector geometry and steering.
@@ -270,6 +270,7 @@ class ReadoutConfig (Config):
                                       'label': 'pdg'}
 
         return
+
 
 default_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
                                                       'detector_config',
@@ -301,3 +302,100 @@ preset_readout_configs = {file_name.strip('.yaml'):
                           ReadoutConfig(os.path.join(readout_config_path,
                                                      file_name))
                           for file_name in os.listdir(readout_config_path)}
+
+class ConfigManager:
+    """
+    ConfigManager
+
+    Initialize a new ConfigManager which contains and provides some
+    functions to simplify configuration among the various modules.
+
+    Parameters
+    ----------
+    readout_config : ReadoutConfig object
+        Config object containing specifications for tile and pixel size, gaps,
+        threshold, noise, etc.
+    physics_config : PhysicsConfig object
+        Config object containing physics parameters for liquid Argon.
+    detector_config : DetectorConfig object
+        Config object containing specifications for TPC volume position and
+        orientation.
+
+    See Also
+    --------
+    DetectorConfig : Config class for parsing parameters for
+                     detector geometry and steering.
+    PhysicsConfig : Config class for parsing parameters for
+                    physics processes (recombination, charge mobility,
+                    etc.)
+    ReadoutConfig : Config class for parsing parameters for
+                    readout details.
+
+    Examples
+    --------
+    >>> dc = DetectorConfig('path/to/detector_config.yaml')
+    >>> pc = PhysicsConfig('path/to/physics_config.yaml')
+    >>> rc = ReadoutConfig('path/to/readout_config.yaml')
+    >>> config = ConfigManager(detector_config = dc,
+                               physics_config = pc,
+                               readout_config = rc)
+
+    You can also pass strings which are interpreted as keys
+    of the preset config dictionaries:
+
+    >>> config = ConfigManager(detector_config = 'coh250',
+                               readout_config = 'GampixD')
+
+    """
+    def __init__(self,
+                 detector_config = default_detector_params,
+                 physics_config = default_physics_params,
+                 readout_config = default_readout_params):
+
+        if type(detector_config) == DetectorConfig:
+            self.detector_config = detector_config
+        elif detector_config in preset_detector_configs.keys():
+            self.detector_config = preset_detector_configs[detector_config]
+        elif os.path.exists(detector_config):
+            try:
+                self.detector_config = DetectorConfig(detector_config)
+            except yaml.parser.ParserError:
+                print ("Invalid path for yaml file!")
+                raise RuntimeError ("cannot initialize a detector configuration")
+        else:
+            raise RuntimeError ("cannot initialize a detector configuration")
+
+        if type(physics_config) == PhysicsConfig:
+            self.physics_config = physics_config
+        elif physics_config in preset_physics_configs.keys():
+            self.physics_config = preset_physics_configs[physics_config]
+        elif os.path.exists(physics_config):
+            try:
+                self.physics_config = PhysicsConfig(physics_config)
+            except yaml.parser.ParserError:
+                print ("Invalid path for yaml file!")
+                raise RuntimeError ("cannot initialize a physics configuration")
+        else:
+            raise RuntimeError ("cannot initialize a physics configuration")
+
+        if type(readout_config) == ReadoutConfig:
+            self.readout_config = readout_config
+        elif readout_config in preset_readout_configs.keys():
+            self.readout_config = preset_readout_configs[readout_config]
+        elif os.path.exists(readout_config):
+            try:
+                self.readout_config = ReadoutConfig(readout_config)
+            except yaml.parser.ParserError:
+                print ("Invalid path for yaml file!")
+                raise RuntimeError ("cannot initialize a readout configuration")
+        else:
+            raise RuntimeError ("cannot initialize a readout configuration")
+        
+
+    def to_yaml(self):
+        """
+
+        """
+        return
+                 
+default_config_manager = ConfigManager()

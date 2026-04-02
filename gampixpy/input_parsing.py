@@ -1,5 +1,5 @@
 from gampixpy.tracks import Track
-from gampixpy.config import default_physics_params, default_detector_params, default_readout_params
+from gampixpy.config import default_config_manager
 from gampixpy.units import *
 from gampixpy.recombination import BoxRecombinationModel, BirksRecombinationModel
 
@@ -24,8 +24,7 @@ class InputParser:
     InputParser(input_filename,
                 position_offset = [0, 0, 0],
                 sequential_sampling = True,
-                physics_config = default_physics_params,
-                readout_config = default_readout_params)
+                config_manager = default_config_manager)
 
     Parent class for more specialized input parsers.
 
@@ -45,12 +44,11 @@ class InputParser:
     def __init__(self, input_filename,
                  position_offset = [0, 0, 0],
                  sequential_sampling = True,
-                 physics_config = default_physics_params,
-                 readout_config = default_readout_params,
+                 config_manager = default_config_manager,
                  ):
 
-        self.physics_config = physics_config
-        self.readout_config = readout_config
+        self.physics_config = config_manager.physics_config
+        self.readout_config = config_manager.readout_config
 
         self.input_filename = input_filename
 
