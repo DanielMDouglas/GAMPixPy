@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from gampixpy.readout_objects import dtype_factory
+from gampixpy.readout_objects import dtype_factory, NULL_LABEL
 from gampixpy import config
 
 class Track:
@@ -71,29 +71,29 @@ class Track:
             dtype described in readout_objects.coarse_tile_dtype.
 
         """
-        coarse_tile_dtype, pixel_dtype = dtype_factory(readout_config)
-        
+        tile_dtype, pixel_dtype = dtype_factory(readout_config)
+
         coarse_tile_sample_array = np.array([(0,
-                                              hit.coarse_cell_tpc,
-                                              hit.coarse_cell_pos[0],
-                                              hit.coarse_cell_pos[1],
-                                              hit.coarse_measurement_depth,
-                                              hit.coarse_measurement_time,
-                                              hit.coarse_cell_measurement,
-                                              hit.attribution,
-                                              hit.labels)
-                                             for hit in self.coarse_tiles_samples],
-                                            dtype = coarse_tile_dtype)
+                                              tile_record.tile_tpc,
+                                              tile_record.tile_pos[0],
+                                              tile_record.tile_pos[1],
+                                              tile_record.trigger_depth,
+                                              tile_record.trigger_time,
+                                              tile_record.waveform,
+                                              tile_record.attribution,
+                                              tile_record.labels)
+                                             for tile_record in self.coarse_tiles_samples],
+                                            dtype = tile_dtype)
         pixel_sample_array = np.array([(0,
-                                        hit.pixel_tpc,
-                                        hit.pixel_pos[0],
-                                        hit.pixel_pos[1],
-                                        hit.hit_depth,
-                                        hit.hit_timestamp,
-                                        hit.hit_measurement,
-                                        hit.attribution,
-                                        hit.labels)
-                                       for hit in self.pixel_samples],
+                                        pixel_record.pixel_tpc,
+                                        pixel_record.pixel_pos[0],
+                                        pixel_record.pixel_pos[1],
+                                        pixel_record.trigger_depth[0],
+                                        pixel_record.trigger_time,
+                                        pixel_record.waveform,
+                                        pixel_record.attribution,
+                                        pixel_record.labels)
+                                       for pixel_record in self.pixel_samples],
                                       dtype = pixel_dtype)
 
         return coarse_tile_sample_array, pixel_sample_array

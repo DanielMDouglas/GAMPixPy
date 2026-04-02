@@ -71,7 +71,7 @@ class OutputManager:
         self.n_tracks += 1
         
     def _add_track(self, track, event_id = None):
-        coarse_tile_sample_array, pixel_sample_array = track.to_array()
+        coarse_tile_sample_array, pixel_sample_array = track.to_array(self.readout_config)
 
         if event_id:
             coarse_tile_sample_array[:]['event id'] = event_id

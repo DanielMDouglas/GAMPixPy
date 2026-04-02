@@ -141,30 +141,30 @@ def draw_box_from_corners(ax,
 
     ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
 
-def plot_coarse_hit(ax,
-                    this_hit,
+def plot_tile_record(ax,
+                    this_tile_record,
                     coordinate_manager,
                     config_manager,
                     z_offset = 0):
-    cell_tpc = this_hit.coarse_cell_tpc
+    tile_tpc = this_tile_record.tile_tpc
             
-    cell_center_xy = this_hit.coarse_cell_pos
-    cell_center_z = this_hit.coarse_measurement_depth
+    tile_center_xy = this_tile_record.tile_pos
+    tile_center_z = this_tile_record.trigger_depth
 
-    tpc_coords = torch.tensor([cell_center_xy[0],
-                               cell_center_xy[1],
-                               cell_center_z])
+    tpc_coords = torch.tensor([tile_center_xy[0],
+                               tile_center_xy[1],
+                               tile_center_z])
     exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
-                                                         cell_tpc)[0]
+                                                         tile_tpc)[0]
     exp_coords = exp_coords.cpu().numpy()
             
-    cell_measurement = this_hit.coarse_cell_measurement
+    cell_measurement = this_tile_record.waveform
 
-    coarse_tile_config = config_manager.readout_config['coarse_tiles']
+    tile_config = config_manager.readout_config['coarse_tiles']
     
-    pitch = coarse_tile_config['pitch'],
+    pitch = tile_config['pitch'],
     
-    this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+    this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[tile_tpc]]
     horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
     half_span_horizontal = horizontal_axis*pitch/2
 
@@ -173,7 +173,7 @@ def plot_coarse_hit(ax,
     
     drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
     v = config_manager.physics_config['charge_drift']['drift_speed']
-    cell_hit_length = v*coarse_tile_config['clock_interval']*coarse_tile_config['integration_length']
+    cell_hit_length = v*tile_config['clock_interval']*tile_config['integration_length']
     depth_span = drift_axis*cell_hit_length
     
     corners = [exp_coords - half_span_horizontal - half_span_vertical,
@@ -190,29 +190,29 @@ def plot_coarse_hit(ax,
                           corners,
                           **coarse_tile_hit_kwargs)
     
-def plot_pixel_hit(ax,
-                   this_hit,
+def plot_pixel_record(ax,
+                   this_pixel_record,
                    coordinate_manager,
                    config_manager,
                    z_offset = 0):
-    cell_tpc = this_hit.pixel_tpc
+    pixel_tpc = this_pixel_record.pixel_tpc
 
-    cell_center_xy = this_hit.pixel_pos
-    cell_z_series = this_hit.hit_depth
+    pixel_center_xy = this_pixel_record.pixel_pos
+    pixel_z_series = this_pixel_record.trigger_depth
 
-    for cell_center_z in cell_z_series:
-        tpc_coords = torch.tensor([cell_center_xy[0],
-                                   cell_center_xy[1],
-                                   cell_center_z + z_offset])
+    for pixel_center_z in pixel_z_series:
+        tpc_coords = torch.tensor([pixel_center_xy[0],
+                                   pixel_center_xy[1],
+                                   pixel_center_z + z_offset])
 
         exp_coords = coordinate_manager.to_experiment_coords(tpc_coords,
-                                                             cell_tpc)[0]
+                                                             pixel_tpc)[0]
         exp_coords = exp_coords.cpu().numpy()
 
         pixel_config = config_manager.readout_config['pixels']
         pitch = pixel_config['pitch']
     
-        this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[cell_tpc]]
+        this_volume_dict = config_manager.detector_config['drift_volumes'][coordinate_manager.index_to_volume[pixel_tpc]]
         horizontal_axis = this_volume_dict['anode_horizontal'].cpu().numpy()
         half_span_horizontal = horizontal_axis*pitch/2
     
@@ -221,8 +221,8 @@ def plot_pixel_hit(ax,
     
         drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
         v = config_manager.physics_config['charge_drift']['drift_speed']
-        cell_hit_length = v*pixel_config['clock_interval']
-        depth_span = drift_axis*cell_hit_length
+        pixel_hit_length = v*pixel_config['clock_interval']
+        depth_span = drift_axis*pixel_hit_length
 
         corners = [exp_coords - half_span_horizontal - half_span_vertical,
                    exp_coords - half_span_horizontal + half_span_vertical,
@@ -472,12 +472,12 @@ class EventDisplay:
 
         coordinate_manager = CoordinateManager(self.config_manager)
         
-        for this_hit in self.track_object.coarse_tiles_samples:
-            plot_coarse_hit(self.ax,
-                            this_hit,
-                            coordinate_manager,
-                            self.config_manager,
-                            )
+        for this_tile_record in self.track_object.coarse_tiles_samples:
+            plot_tile_record(self.ax,
+                             this_tile_record,
+                             coordinate_manager,
+                             self.config_manager,
+                             )
             
         self.set_label_axes()
         
@@ -491,12 +491,12 @@ class EventDisplay:
 
         coordinate_manager = CoordinateManager(self.config_manager)
 
-        for this_hit in self.track_object.pixel_samples:
-            plot_pixel_hit(self.ax,
-                           this_hit,
-                           coordinate_manager,
-                           self.config_manager,
-                           )
+        for this_pixel_record in self.track_object.pixel_samples:
+            plot_pixel_record(self.ax,
+                              this_pixel_record,
+                              coordinate_manager,
+                              self.config_manager,
+                              )
             
         self.set_label_axes()
 

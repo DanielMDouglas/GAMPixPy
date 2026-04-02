@@ -1,5 +1,5 @@
 from gampixpy.config import default_config_manager
-from gampixpy.readout_objects import PixelSample, CoarseGridSample
+from gampixpy.readout_objects import pixel_record_factory, tile_record_factory
 from gampixpy.coordinates import CoordinateManager
 
 import numpy as np
@@ -53,6 +53,9 @@ class ReadoutModel:
 
         self.coordinate_manager = CoordinateManager(config_manager)
 
+        self.PixelRecord = pixel_record_factory(self.readout_config)
+        self.TileRecord = tile_record_factory(self.readout_config)
+        
         self.clock_start_time = 0
 
     def electronics_simulation(self, track, verbose = True, **kwargs):
@@ -395,16 +398,16 @@ class ReadoutModel:
 
         return time, induced_charge
 
-    def compose_pixel_currents(self, coarse_cell_hit, time, charge, label = None):
+    def compose_pixel_currents(self, tile_record, time, charge, label = None):
         """
-        readout.compose_pixel_currents(sparse_current_series, coarse_cell_hit)
+        readout.compose_pixel_currents(tile_record, time, charge, label = None)
 
         Combine multiple sparse timeseries into a single dense timeseries.
 
         Parameters
         ----------
-        coarse_cell_hit : CoarseGridSample object
-            The coarse cell hit inside which this pixel lies.
+        tile_record : TileRecord object
+            The tile activation inside which this pixel lies.
         time : array-like
             Array (shape: (N_samples,)) containing charge arrival time data.
             Expected array is output from readout.point_sample_pixel_current.
@@ -429,8 +432,8 @@ class ReadoutModel:
             identical to induced_charge_by_label. 
 
         """
-        cell_clock_start = coarse_cell_hit.coarse_measurement_time
-        cell_clock_end = coarse_cell_hit.coarse_measurement_time + self.readout_config['coarse_tiles']['clock_interval']*self.readout_config['coarse_tiles']['integration_length']
+        cell_clock_start = tile_record.trigger_time
+        cell_clock_end = tile_record.trigger_time + self.readout_config['coarse_tiles']['clock_interval']*self.readout_config['coarse_tiles']['integration_length']
         
         n_clock_ticks = int((cell_clock_end - cell_clock_start)/self.readout_config['pixels']['clock_interval'])
         arrival_time_bin_edges = torch.linspace(cell_clock_start,
@@ -497,9 +500,9 @@ class ReadoutModel:
 
         return sample_mask 
     
-    def pixel_current_builder(self, track, coarse_tile_hits, **kwargs):
+    def pixel_current_builder(self, track, tile_records, **kwargs):
         """
-        readout.pixel_current_builder(track, coarse_tile_hits, **kwargs)
+        readout.pixel_current_builder(track, tile_records, **kwargs)
 
         Build the current timeseries for each pixel.
 
@@ -507,8 +510,8 @@ class ReadoutModel:
         ----------
         track : Track obect
             Input event representation containing a populated drited_track.
-        coarse_tile_hits : list[CoarseGridSample]
-            List of found coarse hits.
+        tile_records : list[TileRecord]
+            List of found tile triggers.
 
         Returns
         -------
@@ -522,11 +525,11 @@ class ReadoutModel:
         tile_pitch = self.readout_config['coarse_tiles']['pitch']
         pixel_pitch = self.readout_config['pixels']['pitch']
         
-        for this_coarse_hit in coarse_tile_hits:
+        for this_tile_record in tile_records:
 
-            cell_tpc = this_coarse_hit.coarse_cell_tpc # may change
-            cell_center_xy = this_coarse_hit.coarse_cell_pos # may change
-            cell_trigger_t = this_coarse_hit.coarse_measurement_time
+            cell_tpc = this_tile_record.tile_tpc # may change
+            cell_center_xy = this_tile_record.tile_pos # may change
+            cell_trigger_t = this_tile_record.trigger_time
             
             x_bounds = [cell_center_xy[0] - 0.5*tile_pitch,
                         cell_center_xy[0] + 0.5*tile_pitch]
@@ -569,7 +572,7 @@ class ReadoutModel:
                 pixel_sample_current_series = self.point_sample_pixel_current(pixel_coord,
                                                                               track,
                                                                               sample_mask)
-                pixel_current_series = self.compose_pixel_currents(this_coarse_hit,
+                pixel_current_series = self.compose_pixel_currents(this_tile_record,
                                                                    *pixel_sample_current_series)
                 pixel_timeseries[(cell_tpc,
                                   pixel_coord[0],
@@ -602,10 +605,10 @@ class GAMPixModel (ReadoutModel):
     clock_start_time : float
         timestamp of the earliest arriving charge bundle.  This serves as the
         first clock tick of the event readout.
-    coarse_tile_hits : array-like[CoarseTileHit]
-        Array of coarse tile hits populated by tile_hit_finding method
-    fine_pixel_hits : array-like[CoarseTileHit]
-        Array of pixel hits populated by pixel_hit_finding method
+    coarse_tile_hits : array-like[TileRecord]
+        Array of tile triggers populated by tile_hit_finding method
+    fine_pixel_hits : array-like[PixelRecord]
+        Array of pixel triggers populated by pixel_hit_finding method
 
     See Also
     --------
@@ -638,8 +641,8 @@ class GAMPixModel (ReadoutModel):
 
         Returns
         -------
-        hits : list[CoarseTileSample]
-            List of found hits on the coarse tiles.
+        hits : list[TileRecord]
+            List of found triggers on the coarse tiles.
         
         """
         hits = []
@@ -690,13 +693,16 @@ class GAMPixModel (ReadoutModel):
                     # break down the waveform into its components
                     if self.readout_config['truth_tracking']['enabled']:
                         recorded_waveform_by_label = interval_charge_by_label[hit_index:hit_index+hold_length,:]
-                        attribution_by_label = recorded_waveform_by_label/recorded_waveform[:,None]
+                        attribution_by_label = recorded_waveform_by_label/recorded_waveform[:,None] 
+                        attribution_by_label = torch.where(torch.isfinite(attribution_by_label),
+                                                           attribution_by_label,
+                                                           torch.zeros_like(attribution_by_label))
                     else:
                         labels = torch.zeros((0))
                         threshold_crossing_charge_by_label = torch.zeros((0))
                         attribution_by_label = torch.zeros((0))
 
-                        # if we're at the end of the charge distribution,
+                    # if we're at the end of the charge distribution,
                     # pad the charge series to the appropriate length
                     if recorded_waveform.shape[0] < hold_length:
                         diff = hold_length - recorded_waveform.shape[0]
@@ -715,14 +721,14 @@ class GAMPixModel (ReadoutModel):
                     # interfere with successive hits
                     interval_charge[:hit_index+hold_length] = 0
                     
-                    hits.append(CoarseGridSample(tile_tpc,
-                                                 tile_center,
-                                                 threshold_crossing_t.item(),
-                                                 threshold_crossing_z.item(),
-                                                 waveform_ticks.cpu().numpy(),
-                                                 recorded_waveform.cpu().numpy(),
-                                                 attribution_by_label.cpu().numpy(),
-                                                 labels.cpu().numpy()))
+                    hits.append(self.TileRecord(tile_tpc,
+                                                tile_center,
+                                                threshold_crossing_t.item(),
+                                                threshold_crossing_z.item(),
+                                                waveform_ticks.cpu().numpy(),
+                                                recorded_waveform.cpu().numpy(),
+                                                attribution_by_label.cpu().numpy(),
+                                                labels.cpu().numpy()))
                 else:
                     no_more_hits = True
 
@@ -754,7 +760,7 @@ class GAMPixModel (ReadoutModel):
 
         Returns
         -------
-        hits : list[PixelSample]
+        hits : list[PixelRecord]
             List of found hits on the pixel.
         
         """
@@ -791,203 +797,15 @@ class GAMPixModel (ReadoutModel):
                     
                 depth = time_ticks*self.physics_config['charge_drift']['drift_speed']
 
-                hits.append(PixelSample(pixel_tpc,
-                                        pixel_center,
-                                        time_ticks.cpu().numpy()[0],
-                                        depth.cpu().numpy(),
-                                        time_ticks.cpu().numpy(),
-                                        interval_charge.cpu().numpy(),
-                                        attribution_by_label.cpu().numpy(),
-                                        labels.cpu().numpy(),
-                                        ))
-        track.pixel_samples = hits
-        return hits 
-
-class LArPixModel (ReadoutModel):
-    """
-    LArPixModel(readout_config)
-
-    Implementation of hit-finding logic for a LArPix-style pixel plane.  This
-    model uses a threshold and buffer measurement scheme, where charge is allowed
-    to accumulate for a fixed number of clock cycles after threshold crossing
-    before digitization and flushing.
-
-    Attributes
-    ----------
-    readout_config : ReadoutConfig object
-        Config object containing specifications for tile and pixel size, gaps,
-        threshold, noise, etc.
-    clock_start_time : float
-        timestamp of the earliest arriving charge bundle.  This serves as the
-        first clock tick of the event readout.
-    physics_config : PhysicsConfig object
-        Config object containing physics parameters for liquid Argon.
-    detector_config : DetectorConfig object
-        Config object containing specifications for TPC volume position and
-        orientation.
-    coordinate_manager : CoordinateManager object
-        Coordinate manager defined by the provided physics_config.  This is a
-        helper for transforming to and from TPC-specific coordinate systems.
-    coarse_tile_hits : array-like[CoarseTileHit]
-        Array of coarse tile hits populated by tile_hit_finding method
-    fine_pixel_hits : array-like[CoarseTileHit]
-        Array of pixel hits populated by pixel_hit_finding method
-
-    See Also
-    --------
-    ReadoutModel : Parent class for readout models, in which the general scheme
-        for charge simulation is implemented.
-    GAMPixModel : Sub-class implementing a GAMPix-like hit-finding scheme.
-    
-    """
-    def tile_hit_finding(self, track, tile_timeseries, nonoise = False, **kwargs):
-        """
-        readout.tile_hit_finding(track,
-                                 tile_timeseries,
-                                 nonoise = False,
-                                 **kwargs)
-
-        This method of hit finding simply looks for a quantity
-        of charge above threshold within a given z-bin
-        (corresponding to a clock_period*integration_length)
-        
-        Parameters
-        ----------
-        track : Track object
-            Input event representation containing a populated drifted track.
-        tile_timeseries : array-like
-            Array containing charge timeseries on a given tile.
-        nonoise : bool
-            Simulate front-end noise during the hit finding process.  Disable
-            to simulate the mean behavior for this signal (useful for
-            hypothesis testing).
-
-        Returns
-        -------
-        hits : list[CoarseTileSample]
-            List of found hits on the coarse tiles.
-        
-        """
-        # TODO: fix logic for integration_length > 1
-        hits = []
-        
-        for tile_center, timeseries in tile_timeseries.items():
-            time_ticks, interval_charge = timeseries
-            
-            hold_length = self.readout_config['coarse_tiles']['integration_length']            
-            
-            # search along the bins until no more threshold crossings
-            no_more_hits = False
-            while not no_more_hits:
-                window_charge = torch.conv_tbc(interval_charge[:,None,None],
-                                               torch.ones(hold_length,1,1),
-                                               bias = torch.zeros(1),
-                                               pad = hold_length-1)[:,0,0]
-                window_charge = window_charge[hold_length-1:]
-                
-                threshold = self.readout_config['coarse_tiles']['noise']*self.readout_config['coarse_tiles']['threshold_sigma']
-
-                threshold_crossing_mask = window_charge > threshold
-                threshold_crossing_mask *= interval_charge > 0
-
-                if torch.any(threshold_crossing_mask):
-                    hit_index = threshold_crossing_mask.nonzero()[0][0]
-                    
-                    threshold_crossing_t = time_ticks[hit_index]
-
-                    # is there a better way to do this?
-                    threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed'] 
-                
-                    threshold_crossing_charge = window_charge[hit_index]
-                    if not nonoise:
-                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
-
-                    interval_charge[:hit_index+hold_length] = 0
-
-                    hits.append(CoarseGridSample(tile_center,
-                                                 threshold_crossing_t.item(),
-                                                 threshold_crossing_z.item(),
-                                                 threshold_crossing_charge.item()))
-                else:
-                    no_more_hits = True
-
-        track.coarse_tiles_samples = hits
-        return hits 
-
-    def pixel_hit_finding(self, track, pixel_timeseries, nonoise = False, **kwargs):
-        """
-        readout.pixel_hit_finding(track,
-                                  tile_timeseries,
-                                  nonoise = False,
-                                  **kwargs)
-
-        This method of hit finding simply looks for a quantity
-        of charge above threshold within a given z-bin
-        (corresponding to a clock_period*integration_length)
-        
-        Parameters
-        ----------
-        track : Track object
-            Input event representation containing a populated drifted track.
-        pixel_timeseries : array-like
-            Array containing charge timeseries on a given pixel.
-        nonoise : bool
-            Simulate front-end noise during the hit finding process.  Disable
-            to simulate the mean behavior for this signal (useful for
-            hypothesis testing).
-
-        Returns
-        -------
-        hits : list[PixelSample]
-            List of found hits on the pixel.
-        
-        """
-        hits = []
-        
-        for pixel_key, timeseries in pixel_timeseries.items():
-            pixel_center = (pixel_key[0], pixel_key[1])
-            cell_trigger_t = pixel_key[2]
-
-            time_ticks, interval_charge = timeseries
-
-            hold_length = self.readout_config['pixels']['integration_length']            
-
-            # search along the bins until no more threshold crossings
-            no_hits = False
-            while not no_hits:
-                window_charge = torch.conv_tbc(interval_charge[:,None,None],
-                                               torch.ones(hold_length,1,1),
-                                               bias = torch.zeros(1),
-                                               pad = hold_length-1)[:,0,0]
-                window_charge = window_charge[hold_length-1:]
-
-                threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
-                threshold_crossing_mask = window_charge > threshold
-                threshold_crossing_mask *= interval_charge > 0
-                
-                if torch.any(threshold_crossing_mask):
-                    hit_index = threshold_crossing_mask.nonzero()[0][0]
-
-                    threshold_crossing_t = time_ticks[hit_index]
-
-                    # is there a better way to do this?
-                    threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed'] 
-
-                    threshold_crossing_charge = window_charge[hit_index]
-
-                    if not nonoise:
-                        # add quiescent noise
-                        threshold_crossing_charge += torch.normal(0, torch.tensor(self.readout_config['pixels']['noise']).float())
-
-                    interval_charge[:hit_index+hold_length] = 0
-
-                    hits.append(PixelSample(pixel_center,
-                                            threshold_crossing_t.item(),
-                                            threshold_crossing_z.item(),
-                                            threshold_crossing_charge.item()))
-                else:
-                    no_hits = True
-
+                hits.append(self.PixelRecord(pixel_tpc,
+                                             pixel_center,
+                                             time_ticks.cpu().numpy()[0],
+                                             depth.cpu().numpy(),
+                                             time_ticks.cpu().numpy(),
+                                             interval_charge.cpu().numpy(),
+                                             attribution_by_label.cpu().numpy(),
+                                             labels.cpu().numpy(),
+                                             ))
         track.pixel_samples = hits
         return hits 
 
@@ -1015,8 +833,8 @@ class DetectorModel:
 
         self.coordinate_manager = CoordinateManager(config_manager)
         
-        self.readout_model = GAMPixModel(config_manager)
-        # self.readout_model = LArPixModel(readout_config)
+        self.readout_model = GAMPixModel(config_manager,
+                                         )
 
     def simulate(self, track, **kwargs):
         """
