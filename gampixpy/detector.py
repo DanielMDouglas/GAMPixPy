@@ -42,7 +42,6 @@ class ReadoutModel:
     See Also
     --------
     GAMPixModel : Sub-class implementing a GAMPix-like hit-finding scheme.
-    LArPixModel : Sub-class implementing a LArPix-like hit-finding scheme.    
 
     """
     def __init__(self,
@@ -622,7 +621,6 @@ class GAMPixModel (ReadoutModel):
     --------
     ReadoutModel : Parent class for readout models, in which the general scheme
         for charge simulation is implemented.
-    LArPixModel : Sub-class implementing a LArPix-like hit-finding scheme.    
     
     """
     def tile_hit_finding(self, track, tile_timeseries, nonoise = False, **kwargs):
