@@ -224,10 +224,13 @@ class ReadoutModel:
             if self.readout_config['truth_tracking']['enabled']:
                 # convert input labels to indices (sequential values)
                 unique_labels = torch.unique(label)
-                label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
-                index_to_label = {i: pdg for pdg, i in label_to_index.items()}
+                label_to_index = {int(this_label.item()): i
+                                  for i, this_label in enumerate(unique_labels)}
+                index_to_label = {i: this_label
+                                  for this_label, i in label_to_index.items()}
                 label_bin_edges = torch.arange(unique_labels.shape[0]+1)
-                label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
+                label_indices = torch.tensor([label_to_index[this_label.item()]
+                                              for this_label in label])
 
                 induced_charge_by_label = torchist.histogramdd(torch.stack((time,
                                                                             label_indices)).T,
@@ -449,10 +452,13 @@ class ReadoutModel:
         if self.readout_config['truth_tracking']['enabled']:
             # convert input labels to indices (sequential values)
             unique_labels = torch.unique(label)
-            label_to_index = {int(pdg.item()): i for i, pdg in enumerate(unique_labels)}
-            index_to_label = {i: pdg for pdg, i in label_to_index.items()}
+            label_to_index = {int(this_label.item()): i
+                              for i, this_label in enumerate(unique_labels)}
+            index_to_label = {i: this_label
+                              for this_label, i in label_to_index.items()}
             label_bin_edges = torch.arange(unique_labels.shape[0]+1)
-            label_indices = torch.tensor([label_to_index[pdg.item()] for pdg in label])
+            label_indices = torch.tensor([label_to_index[this_label.item()]
+                                          for this_label in label])
 
             induced_charge_by_label = torchist.histogramdd(torch.stack((time,
                                                                         label_indices)).T,
@@ -569,15 +575,17 @@ class ReadoutModel:
                                round(float(pixel_center[1]), 3))
 
                 sample_mask = self.pixel_receptive_field(pixel_coord, track)
-                pixel_sample_current_series = self.point_sample_pixel_current(pixel_coord,
-                                                                              track,
-                                                                              sample_mask)
-                pixel_current_series = self.compose_pixel_currents(this_tile_record,
-                                                                   *pixel_sample_current_series)
-                pixel_timeseries[(cell_tpc,
-                                  pixel_coord[0],
-                                  pixel_coord[1],
-                                  cell_trigger_t)] = pixel_current_series
+
+                if torch.any(sample_mask):
+                    pixel_sample_current_series = self.point_sample_pixel_current(pixel_coord,
+                                                                                  track,
+                                                                                  sample_mask)
+                    pixel_current_series = self.compose_pixel_currents(this_tile_record,
+                                                                       *pixel_sample_current_series)
+                    pixel_timeseries[(cell_tpc,
+                                      pixel_coord[0],
+                                      pixel_coord[1],
+                                      cell_trigger_t)] = pixel_current_series
                                            
         return pixel_timeseries
 

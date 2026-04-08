@@ -80,7 +80,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ],
                                align = True)
         
-        return tile_dtype, pixel_dtype
+    return tile_dtype, pixel_dtype
 
 def pixel_record_factory(readout_config = config.default_readout_params):
     """
