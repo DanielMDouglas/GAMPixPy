@@ -532,16 +532,17 @@ class ReadoutModel:
         
         for this_tile_record in tile_records:
 
-            cell_tpc = this_tile_record.tile_tpc # may change
-            cell_center_xy = this_tile_record.tile_pos # may change
-            cell_trigger_t = this_tile_record.trigger_time
+            tile_tpc = this_tile_record.tile_tpc # may change
+            tile_center_xy = this_tile_record.tile_pos # may change
+            tile_trigger_t = this_tile_record.trigger_time
+            tile_trigger_id = this_tile_record.tile_trigger_id
             
-            x_bounds = [cell_center_xy[0] - 0.5*tile_pitch,
-                        cell_center_xy[0] + 0.5*tile_pitch]
-            y_bounds = [cell_center_xy[1] - 0.5*tile_pitch,
-                        cell_center_xy[1] + 0.5*tile_pitch]
-            t_bounds = [cell_trigger_t,
-                        cell_trigger_t + self.readout_config['coarse_tiles']['clock_interval']*self.readout_config['coarse_tiles']['integration_length']]
+            x_bounds = [tile_center_xy[0] - 0.5*tile_pitch,
+                        tile_center_xy[0] + 0.5*tile_pitch]
+            y_bounds = [tile_center_xy[1] - 0.5*tile_pitch,
+                        tile_center_xy[1] + 0.5*tile_pitch]
+            t_bounds = [tile_trigger_t,
+                        tile_trigger_t + self.readout_config['coarse_tiles']['clock_interval']*self.readout_config['coarse_tiles']['integration_length']]
 
             in_cell_mask = track.drifted_track['position'][:,0] >= x_bounds[0]
             in_cell_mask *= track.drifted_track['position'][:,0] < x_bounds[1]
@@ -549,7 +550,7 @@ class ReadoutModel:
             in_cell_mask *= track.drifted_track['position'][:,1] < y_bounds[1]
             in_cell_mask *= track.drifted_track['time'] >= t_bounds[0]
             in_cell_mask *= track.drifted_track['time'] < t_bounds[1]
-            in_cell_mask *= track.tpc_track['TPC_index'] == cell_tpc
+            in_cell_mask *= track.tpc_track['TPC_index'] == tile_tpc
 
             in_cell_positions = track.drifted_track['position'][in_cell_mask]
             in_cell_charges = track.drifted_track['charge'][in_cell_mask]
@@ -581,10 +582,10 @@ class ReadoutModel:
                                                                                   sample_mask)
                     pixel_current_series = self.compose_pixel_currents(this_tile_record,
                                                                        *pixel_sample_current_series)
-                    pixel_timeseries[(cell_tpc,
+                    pixel_timeseries[(tile_tpc,
                                       pixel_coord[0],
                                       pixel_coord[1],
-                                      cell_trigger_t)] = pixel_current_series
+                                      tile_trigger_id)] = pixel_current_series
                                            
         return pixel_timeseries
 
@@ -729,6 +730,7 @@ class GAMPixModel (ReadoutModel):
                     
                     hits.append(self.TileRecord(tile_tpc,
                                                 tile_center,
+                                                len(hits),
                                                 threshold_crossing_t.item(),
                                                 threshold_crossing_z.item(),
                                                 waveform_ticks.cpu().numpy(),
@@ -775,7 +777,7 @@ class GAMPixModel (ReadoutModel):
         for pixel_key, pixel_value in pixel_timeseries.items():
             pixel_tpc = pixel_key[0]
             pixel_center = (pixel_key[1], pixel_key[2])
-            cell_trigger_t = pixel_key[3]
+            tile_trigger_id = pixel_key[3]
 
             if self.readout_config['truth_tracking']['enabled']:
                 time_ticks, interval_charge, interval_charge_by_label, labels = pixel_value
@@ -805,6 +807,7 @@ class GAMPixModel (ReadoutModel):
 
                 hits.append(self.PixelRecord(pixel_tpc,
                                              pixel_center,
+                                             tile_trigger_id,
                                              time_ticks.cpu().numpy()[0],
                                              depth.cpu().numpy(),
                                              time_ticks.cpu().numpy(),

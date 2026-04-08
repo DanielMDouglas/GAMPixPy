@@ -29,6 +29,7 @@ def dtype_factory(readout_config = config.default_readout_params):
     
     if truth_tracking:
         tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile trigger id", "u4"),
                                ("tile tpc", "u4"),
                                ("tile x", "f4"),
                                ("tile y", "f4"),
@@ -44,6 +45,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                               align = True)
 
         pixel_dtype = np.dtype([("event id", "u4"),
+                                ("tile trigger id", "u4"),
                                 ("pixel tpc", "u4"),
                                 ("pixel x", "f4"),
                                 ("pixel y", "f4"),
@@ -59,6 +61,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                align = True)
     else:
         tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile trigger id", "u4"),
                                ("tile tpc", "u4"),
                                ("tile x", "f4"),
                                ("tile y", "f4"),
@@ -70,6 +73,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                               align = True)
 
         pixel_dtype = np.dtype([("event id", "u4"),
+                                ("tile trigger id", "u4"),
                                 ("pixel tpc", "u4"),
                                 ("pixel x", "f4"),
                                 ("pixel y", "f4"),
@@ -109,6 +113,7 @@ def pixel_record_factory(readout_config = config.default_readout_params):
         """
         PixelRecord(pixel_tpc,
                     pixel_pos,
+                    tile_trigger_id,
                     trigger_timestamp,
                     trigger_depth,
                     timeticks,
@@ -124,6 +129,8 @@ def pixel_record_factory(readout_config = config.default_readout_params):
             TPC index of pixel.
         pixel_pos : tuple(float, float)
             Position in anode coordinates (x, y) of pixel center.
+        tile_trigger_id : int
+            ID corresponding to the coarse tile trigger.  Unique per event.
         trigger_time : float
             Timestamp associated with beginning of measurement.
             Depending on the hit finding method used, this may
@@ -149,6 +156,7 @@ def pixel_record_factory(readout_config = config.default_readout_params):
         def __init__(self,
                      pixel_tpc,
                      pixel_pos,
+                     tile_trigger_id,
                      trigger_time,
                      trigger_depth,
                      timeticks,
@@ -157,6 +165,7 @@ def pixel_record_factory(readout_config = config.default_readout_params):
                      labels):
             self.pixel_tpc = pixel_tpc
             self.pixel_pos = pixel_pos
+            self.tile_trigger_id = tile_trigger_id
             self.trigger_time = trigger_time
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
@@ -180,11 +189,16 @@ def pixel_record_factory(readout_config = config.default_readout_params):
                         
         @classmethod
         def from_numpy(cls, array):
+            trigger_time = array['trig t'],
+            dt = readout_config['pixels']['clock_interval']
+            timeticks = trigger_time + dt*np.arange(tile_waveform_length)
             return cls(array['pixel tpc'],
                        [array['pixel x'], array['pixel y']],
-                       array['hit t'],
-                       array['hit z'],
-                       array['hit charge'],
+                       array['tile trigger id'],
+                       trigger_time,
+                       array['trig z'],
+                       timeticks,
+                       array['waveform'],
                        array['attribution'],
                        array['label'],
                        )
@@ -222,6 +236,7 @@ def tile_record_factory(readout_config = config.default_readout_params):
         """
         TileRecorde(coarse_cell_tpc,
                     coarse_cell_pos,
+                    tile_trigger_id,
                     trigger_timestamp,
                     trigger_depth,
                     timeticks,
@@ -237,6 +252,8 @@ def tile_record_factory(readout_config = config.default_readout_params):
             TPC index of coarse cell.
         tile_pos : tuple(float, float)
             Position in anode coordinates (x, y) of the tile center.
+        tile_trigger_id : int
+            ID corresponding to the coarse tile trigger.  Unique per event.
         trigger_time : float
             Timestamp associated with beginning of measurement.
             Depending on the hit finding method used, this may be
@@ -262,6 +279,7 @@ def tile_record_factory(readout_config = config.default_readout_params):
         def __init__(self,
                      tile_tpc,
                      tile_pos,
+                     tile_trigger_id,
                      trigger_time,
                      trigger_depth,
                      timeticks,
@@ -270,6 +288,7 @@ def tile_record_factory(readout_config = config.default_readout_params):
                      labels):
             self.tile_tpc = tile_tpc
             self.tile_pos = tile_pos
+            self.tile_trigger_id = tile_trigger_id
             self.trigger_time = trigger_time
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
@@ -294,11 +313,16 @@ def tile_record_factory(readout_config = config.default_readout_params):
                         
         @classmethod
         def from_numpy(cls, array):
+            trigger_time = array['trig t'],
+            dt = readout_config['coarse_tiles']['clock_interval']
+            timeticks = trigger_time + dt*np.arange(waveform.shape[0])
             return cls(array['tile tpc'],
                        [array['tile x'], array['tile y']],
-                       array['hit t'],
-                       array['hit z'],
-                       array['hit charge'],
+                       array['tile trigger id'],
+                       trigger_time,
+                       array['trig z'],
+                       timeticks,
+                       array['waveform'],
                        array['attribution'],
                        array['label'],
                        )

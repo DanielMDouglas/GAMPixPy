@@ -76,6 +76,7 @@ class Track:
         truth_tracking = readout_config['truth_tracking']['enabled']
         if truth_tracking:
             coarse_tile_sample_array = np.array([(0,
+                                                  tile_record.tile_trigger_id,
                                                   tile_record.tile_tpc,
                                                   tile_record.tile_pos[0],
                                                   tile_record.tile_pos[1],
@@ -87,6 +88,7 @@ class Track:
                                                  for tile_record in self.coarse_tiles_samples],
                                                 dtype = tile_dtype)
             pixel_sample_array = np.array([(0,
+                                            pixel_record.tile_trigger_id,
                                             pixel_record.pixel_tpc,
                                             pixel_record.pixel_pos[0],
                                             pixel_record.pixel_pos[1],
@@ -100,6 +102,7 @@ class Track:
 
         else:
             coarse_tile_sample_array = np.array([(0,
+                                                  tile_record.tile_trigger_id,
                                                   tile_record.tile_tpc,
                                                   tile_record.tile_pos[0],
                                                   tile_record.tile_pos[1],
@@ -109,6 +112,7 @@ class Track:
                                                  for tile_record in self.coarse_tiles_samples],
                                                 dtype = tile_dtype)
             pixel_sample_array = np.array([(0,
+                                            pixel_record.tile_trigger_id,
                                             pixel_record.pixel_tpc,
                                             pixel_record.pixel_pos[0],
                                             pixel_record.pixel_pos[1],
@@ -117,7 +121,6 @@ class Track:
                                             pixel_record.waveform)
                                            for pixel_record in self.pixel_samples],
                                           dtype = pixel_dtype)
-
 
         return coarse_tile_sample_array, pixel_sample_array
 
