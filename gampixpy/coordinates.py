@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 if torch.cuda.is_available():
@@ -9,7 +10,7 @@ else:
 
 class CoordinateManager:
     """
-    CoordinateManager()
+    CoordinateManager(config_manager = default_config_manager)
 
     Class for transforming external coordinate systems into the internal
     coordinate system.
@@ -18,8 +19,8 @@ class CoordinateManager:
     ----------
     
     """
-    def __init__(self, detector_config):
-        self.detector_config = detector_config
+    def __init__(self, config_manager):
+        self.detector_config = config_manager.detector_config
 
         # dictionaries for translating from volume name stings to an internal index
         keylist = list(self.detector_config['drift_volumes'].keys())
@@ -60,7 +61,31 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
 
-        exp_coords = torch.empty(coords.shape)
+        if type(coords) in [list, np.ndarray]:
+            coords = torch.tensor(coords)
+
+        assert type(coords) == torch.Tensor, \
+            "Usupported input type for coordinates: "+str(type(coords))
+
+        if len(coords.shape) == 1:
+            coords = coords[None,:].float()
+
+        assert len(coords.shape) == 2, "Unsupported shape for input coordinates!"
+        assert coords.shape[-1] == 3, "Input coordinates must have length 3 in axis -1!"
+
+        if type(tpc_index) in [int, list, np.ndarray]:
+            tpc_index = torch.tensor(tpc_index).int()
+
+        assert type(tpc_index) == torch.Tensor, "Usupported input type for tpc_index: "+str(type(tpc_index))
+
+        if len(tpc_index.shape) == 0:
+            tpc_index = tpc_index[None]
+
+        assert len(tpc_index.shape) == 1, "Malformed tpc_index!"
+        assert coords.shape[0] == tpc_index.shape[0], \
+            "Mis-matched shapes between coordinates and tpc indices!"
+
+        exp_coords = torch.empty_like(coords)
         for volume_name, volume_dict in self.detector_config['drift_volumes'].items():
             tpc_origin = volume_dict['anode_center']
 
@@ -165,8 +190,8 @@ class CoordinateManager:
             # choose an arbitrary corner.  Which one doesn't matter, but it should be
             # between 0 and 7 (a rectangular prism has 8 vertices)
             reference_corner_index = 0
-            reference_corner = volume_dict['corners'][reference_corner_index]
-            connected_corners = volume_dict['corners'][volume_dict['connectivity'][reference_corner_index]]
+            reference_corner = volume_dict['corners'][reference_corner_index].double()
+            connected_corners = volume_dict['corners'][volume_dict['connectivity'][reference_corner_index]].double()
 
             leg_vec = connected_corners - reference_corner
             leg_dists = torch.linalg.norm(leg_vec, axis = 1)
@@ -225,4 +250,5 @@ class CoordinateManager:
             coordinates to internal coordinates.
         """
         # is this a useful function?  Implement at some point...
-        return coords
+        raise NotImplementedError
+

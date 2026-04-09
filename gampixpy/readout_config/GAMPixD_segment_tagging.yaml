@@ -1,6 +1,6 @@
 truth_tracking:
   enabled: True
-  label: pdg
+  label: segment
   n_labels: 3
 
 coarse_tiles:

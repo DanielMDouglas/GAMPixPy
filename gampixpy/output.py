@@ -1,8 +1,9 @@
 import h5py
 import numpy as np
 
-from gampixpy.readout_objects import coarse_tile_dtype, pixel_dtype
+from gampixpy.readout_objects import dtype_factory
 from gampixpy.input_parsing import meta_dtype
+from gampixpy import config
 
 class OutputManager:
     """
@@ -22,18 +23,22 @@ class OutputManager:
         Number of tracks written to the output file so far.
     
     """
-    def __init__(self, output_filename):
+    def __init__(self, output_filename,
+                 config_manager = config.default_config_manager):
         self.output_filename = output_filename
 
         self.outfile = h5py.File(output_filename, 'w')
 
-        self.outfile.create_dataset('coarse_hits',
+        self.readout_config = config_manager.readout_config
+        self.tile_dtype, self.pixel_dtype = dtype_factory(self.readout_config)
+        
+        self.outfile.create_dataset('tiles',
                                     shape = (0,),
-                                    dtype = coarse_tile_dtype,
+                                    dtype = self.tile_dtype,
                                     maxshape = (None,))
-        self.outfile.create_dataset('pixel_hits',
+        self.outfile.create_dataset('pixels',
                                     shape = (0,),
-                                    dtype = pixel_dtype,
+                                    dtype = self.pixel_dtype,
                                     maxshape = (None,))
         self.outfile.create_dataset('meta',
                                     shape = (0,),
@@ -79,7 +84,7 @@ class OutputManager:
         self.n_tracks += 1
         
     def _add_track(self, track, event_id = None):
-        coarse_tile_sample_array, pixel_sample_array = track.to_array()
+        coarse_tile_sample_array, pixel_sample_array = track.to_array(self.readout_config)
 
         if event_id:
             coarse_tile_sample_array[:]['event id'] = event_id
@@ -89,16 +94,16 @@ class OutputManager:
             pixel_sample_array[:]['event id'] = self.n_tracks
         
         n_coarse_hits = coarse_tile_sample_array.shape[0]
-        n_coarse_hits_prev = self.outfile['coarse_hits'].shape[0]
+        n_coarse_hits_prev = self.outfile['tiles'].shape[0]
 
         n_pixel_hits = pixel_sample_array.shape[0]
-        n_pixel_hits_prev = self.outfile['pixel_hits'].shape[0]
+        n_pixel_hits_prev = self.outfile['pixels'].shape[0]
 
-        self.outfile['coarse_hits'].resize((n_coarse_hits+n_coarse_hits_prev,))
-        self.outfile['coarse_hits'][n_coarse_hits_prev:] = coarse_tile_sample_array
+        self.outfile['tiles'].resize((n_coarse_hits+n_coarse_hits_prev,))
+        self.outfile['tiles'][n_coarse_hits_prev:] = coarse_tile_sample_array
 
-        self.outfile['pixel_hits'].resize((n_pixel_hits+n_pixel_hits_prev,))
-        self.outfile['pixel_hits'][n_pixel_hits_prev:] = pixel_sample_array
+        self.outfile['pixels'].resize((n_pixel_hits+n_pixel_hits_prev,))
+        self.outfile['pixels'][n_pixel_hits_prev:] = pixel_sample_array
 
     def _add_meta(self, meta, event_id):
         if event_id:

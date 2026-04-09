@@ -22,31 +22,22 @@ else:
 def main(args):
 
     # load configs for physics, detector, and readout
-    if args.detector_config == "":
-        detector_config = config.default_detector_params
-    else:
-        detector_config = config.DetectorConfig(args.detector_config)
+    conf = config.ConfigManager(detector_config = args.detector_config,
+                                physics_config = args.physics_config,
+                                readout_config = args.readout_config,
+                                )
 
-    if args.physics_config == "":
-        physics_config = config.default_physics_params
-    else:
-        physics_config = config.PhysicsConfig(args.physics_config)
-
-    if args.readout_config == "":
-        readout_config = config.default_readout_params
-    else:
-        readout_config = config.ReadoutConfig(args.readout_config)
-
-    detector_model = detector.DetectorModel(detector_params = detector_config,
-                                            physics_params = physics_config,
-                                            readout_params = readout_config,
-                                            )
+    detector_model = detector.DetectorModel(config_manager = conf)
 
     if args.output_file:
-        output_manager = output.OutputManager(args.output_file)
+        output_manager = output.OutputManager(args.output_file,
+                                              config_manager = conf)
 
+    # choose the correct input parser using the provided args
+    # default value for `args.input_format` is 'edepsim'
+    # so this will create an EdepSimParser object and expect hdf5 input
     input_parser = input_parsing.parser_dict[args.input_format](args.input_edepsim_file,
-                                                                readout_config = readout_config)
+                                                                config_manager = conf)
 
     # # When you need only specific segments from an input event,
     # # you can specify a whitelist of PDG codes to pass through 
@@ -57,7 +48,7 @@ def main(args):
 
     # If you just need all segments, use the iter method instead
     for event_index, edepsim_track, event_meta in tqdm.tqdm(input_parser):
-        
+
         detector_model.simulate(edepsim_track,
                                 verbose = False)
 
@@ -96,15 +87,15 @@ if __name__ == '__main__':
 
     parser.add_argument('-d', '--detector_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'detector configuration yaml')
     parser.add_argument('-p', '--physics_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'physics configuration yaml')
     parser.add_argument('-r', '--readout_config',
                         type = str,
-                        default = "",
+                        default = "default",
                         help = 'readout configuration yaml')
 
     args = parser.parse_args()
