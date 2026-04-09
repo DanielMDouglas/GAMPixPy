@@ -29,6 +29,7 @@ class OutputManager:
 
         self.outfile = h5py.File(output_filename, 'w')
 
+        self.config_manager = config_manager
         self.readout_config = config_manager.readout_config
         self.tile_dtype, self.pixel_dtype = dtype_factory(self.readout_config)
         
@@ -46,7 +47,7 @@ class OutputManager:
                                     maxshape = (None,))
         self.n_tracks = 0 # track how many tracks have been written so far
 
-    def add_file_metadata(self, readout_config, detector_config, physics_config):
+    def add_file_metadata(self):
         """
         om.add_file_metadata()
 
