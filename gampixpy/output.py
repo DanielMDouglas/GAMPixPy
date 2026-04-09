@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import pickle        
 
 from gampixpy.readout_objects import dtype_factory
 from gampixpy.input_parsing import meta_dtype
@@ -47,6 +48,8 @@ class OutputManager:
                                     maxshape = (None,))
         self.n_tracks = 0 # track how many tracks have been written so far
 
+        self.add_file_metadata()
+
     def add_file_metadata(self):
         """
         om.add_file_metadata()
@@ -57,8 +60,10 @@ class OutputManager:
         original G4-level input).
 
         """
-
-        self.outfile.attrs[]
+        
+        self.outfile.attrs['readout config'] = np.void(pickle.dumps(self.config_manager.readout_config))
+        self.outfile.attrs['physics config'] = np.void(pickle.dumps(self.config_manager.physics_config))
+        self.outfile.attrs['detector config'] = np.void(pickle.dumps(self.config_manager.detector_config))
 
     def add_entry(self, track, meta, event_id = None):
         """
