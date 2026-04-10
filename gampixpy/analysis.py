@@ -1,9 +1,10 @@
 from gampixpy.readout_objects import NULL_EVENT, NULL_LABEL
 from gampixpy.input_parsing import EdepSimParser
-from gampixpy.config import default_physics_params, default_readout_params
+from gampixpy.config import default_config_manager, ConfigManager
 
 import h5py
 import numpy as np
+import pickle
 
 class OutputParser:
     """
@@ -126,6 +127,15 @@ class OutputParser:
         self._coarse_hit_label_mask = maj_label_coarse == self.label
         # self._meta_mask *= self._file_handle['meta']['label'] == self.label
 
+    def get_configs(self):
+        detector_config = pickle.loads(self._file_hangle.attrs['detector config'])
+        physics_config = pickle.loads(self._file_hangle.attrs['physics config'])
+        readout_config = pickle.loads(self._file_hangle.attrs['readout config'])
+
+        config_manager = ConfigManager(detector_config = detector_config,
+                                       physics_config = physics_config,
+                                       readout_config = readout_config)
+        
     def get_data(self,
                  event_id = None,
                  label = None,
@@ -183,13 +193,11 @@ class CrossReferenceParser:
     def __init__(self,
                  input_edepsim,
                  gampix_sim_output,
-                 physics_config = default_physics_params,
-                 readout_config = default_readout_params,
+                 config_manager = default_config_manager,
                  ):
         self.edepsim = input_edepsim
         self.input_parser = EdepSimParser(input_edepsim,
-                                          physics_config = physics_config,
-                                          readout_config = readout_config,
+                                          config_manager = config_manager,
                                           )
         
         self.gampixsim = gampix_sim_output
@@ -198,8 +206,7 @@ class CrossReferenceParser:
         self._event_id = NULL_EVENT
         self._label = NULL_LABEL
 
-        self._physics_config = physics_config
-        self._readout_config = readout_config
+        self._config_manager = config_manager
 
         self._event_indices = self.output_parser._event_indices
         self._label_list = np.empty(0)
