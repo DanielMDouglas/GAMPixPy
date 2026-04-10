@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import pickle        
 
 from gampixpy.readout_objects import dtype_factory
 from gampixpy.input_parsing import meta_dtype
@@ -29,6 +30,7 @@ class OutputManager:
 
         self.outfile = h5py.File(output_filename, 'w')
 
+        self.config_manager = config_manager
         self.readout_config = config_manager.readout_config
         self.tile_dtype, self.pixel_dtype = dtype_factory(self.readout_config)
         
@@ -45,6 +47,23 @@ class OutputManager:
                                     dtype = meta_dtype,
                                     maxshape = (None,))
         self.n_tracks = 0 # track how many tracks have been written so far
+
+        self.add_file_metadata()
+
+    def add_file_metadata(self):
+        """
+        om.add_file_metadata()
+
+        Add file-level metadata to the output file.  This is to easily track
+        configuration data and other relevant environment details so that
+        the simulation can be reproduced with no other input (besides the
+        original G4-level input).
+
+        """
+        
+        self.outfile.attrs['readout config'] = np.void(pickle.dumps(self.config_manager.readout_config))
+        self.outfile.attrs['physics config'] = np.void(pickle.dumps(self.config_manager.physics_config))
+        self.outfile.attrs['detector config'] = np.void(pickle.dumps(self.config_manager.detector_config))
 
     def add_entry(self, track, meta, event_id = None):
         """

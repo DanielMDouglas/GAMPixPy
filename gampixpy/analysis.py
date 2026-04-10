@@ -1,9 +1,10 @@
 from gampixpy.readout_objects import NULL_EVENT, NULL_LABEL
 from gampixpy.input_parsing import EdepSimParser
-from gampixpy.config import default_physics_params, default_readout_params
+from gampixpy.config import default_config_manager, ConfigManager
 
 import h5py
 import numpy as np
+import pickle
 
 class OutputParser:
     """
@@ -48,9 +49,9 @@ class OutputParser:
         self._event_id = NULL_EVENT
         self._label = NULL_LABEL
 
-        self._pixel_hit_event_mask = np.zeros_like(self._file_handle['pixel_hits']['event id'],
+        self._pixel_hit_event_mask = np.zeros_like(self._file_handle['pixels']['event id'],
                                                    dtype = bool)
-        self._coarse_hit_event_mask = np.zeros_like(self._file_handle['coarse_hits']['event id'],
+        self._coarse_hit_event_mask = np.zeros_like(self._file_handle['tiles']['event id'],
                                                     dtype = bool)
         self._meta_mask = np.zeros_like(self._file_handle['meta']['event id'],
                                         dtype = bool)
@@ -100,19 +101,19 @@ class OutputParser:
         return self._label_list
 
     def eval_event_mask(self):
-        self._pixel_hit_event_mask = self._file_handle['pixel_hits']['event id'] == self.event_id
-        self._coarse_hit_event_mask = self._file_handle['coarse_hits']['event id'] == self.event_id
+        self._pixel_hit_event_mask = self._file_handle['pixels']['event id'] == self.event_id
+        self._coarse_hit_event_mask = self._file_handle['tiles']['event id'] == self.event_id
         self._meta_mask = self._file_handle['meta']['event id'] == self.event_id
 
     def eval_label_mask(self):
-        event_pix = self._file_handle['pixel_hits'][self._pixel_hit_event_mask]
+        event_pix = self._file_handle['pixels'][self._pixel_hit_event_mask]
         event_pix_label = event_pix['label']
         event_pix_attr = event_pix['attribution']
         maj_label_pix = np.array([pix_label[np.argmax(pix_attr)]
                                   for pix_label, pix_attr in zip(event_pix_label,
                                                                  event_pix_attr)])
 
-        event_coarse = self._file_handle['coarse_hits'][self._coarse_hit_event_mask]
+        event_coarse = self._file_handle['tiles'][self._coarse_hit_event_mask]
         event_coarse_label = event_coarse['label']
         event_coarse_attr = event_coarse['attribution']
         maj_label_coarse = np.array([coarse_label[np.argmax(coarse_attr)]
@@ -126,6 +127,17 @@ class OutputParser:
         self._coarse_hit_label_mask = maj_label_coarse == self.label
         # self._meta_mask *= self._file_handle['meta']['label'] == self.label
 
+    def get_configs(self):
+        detector_config = pickle.loads(self._file_handle.attrs['detector config'])
+        physics_config = pickle.loads(self._file_handle.attrs['physics config'])
+        readout_config = pickle.loads(self._file_handle.attrs['readout config'])
+
+        config_manager = ConfigManager(detector_config = detector_config,
+                                       physics_config = physics_config,
+                                       readout_config = readout_config)
+
+        return config_manager
+        
     def get_data(self,
                  event_id = None,
                  label = None,
@@ -135,8 +147,8 @@ class OutputParser:
         if label:
             self.label = label
 
-        sel_pixel_hits = self._file_handle['pixel_hits'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
-        sel_coarse_hits = self._file_handle['coarse_hits'][self._coarse_hit_event_mask][self._coarse_hit_label_mask]
+        sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
+        sel_coarse_hits = self._file_handle['tiles'][self._coarse_hit_event_mask][self._coarse_hit_label_mask]
         sel_meta = self._file_handle['meta'][self._meta_mask]
 
         return sel_pixel_hits, sel_coarse_hits, sel_meta
@@ -183,13 +195,11 @@ class CrossReferenceParser:
     def __init__(self,
                  input_edepsim,
                  gampix_sim_output,
-                 physics_config = default_physics_params,
-                 readout_config = default_readout_params,
+                 config_manager = default_config_manager,
                  ):
         self.edepsim = input_edepsim
         self.input_parser = EdepSimParser(input_edepsim,
-                                          physics_config = physics_config,
-                                          readout_config = readout_config,
+                                          config_manager = config_manager,
                                           )
         
         self.gampixsim = gampix_sim_output
@@ -198,8 +208,7 @@ class CrossReferenceParser:
         self._event_id = NULL_EVENT
         self._label = NULL_LABEL
 
-        self._physics_config = physics_config
-        self._readout_config = readout_config
+        self._config_manager = config_manager
 
         self._event_indices = self.output_parser._event_indices
         self._label_list = np.empty(0)

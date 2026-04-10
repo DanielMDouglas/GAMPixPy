@@ -53,7 +53,7 @@ class AbstractConfig (dict):
 
         self._parse_config()
         self._compute_derived_parameters()
-        
+
     def _parse_config(self):
         # parse a config (yaml) file and store values
         # internally as a dict
@@ -115,6 +115,13 @@ class DetectorConfig (AbstractConfig):
     >>> dc = DetectorConfig('path/to/config.yaml')
 
     """
+    
+    @classmethod
+    def from_dict(cls, config_dict):
+        tmp = default_detector_params
+        tmp.update(config_dict)
+        return tmp
+
     def _compute_derived_parameters(self):
         # compute any required parameters from
         # those specified in the YAML
@@ -218,6 +225,13 @@ class PhysicsConfig (AbstractConfig):
     >>> pc = PhysicsConfig('path/to/config.yaml')
 
     """
+
+    @classmethod
+    def from_dict(cls, config_dict):
+        tmp = default_physics_params
+        tmp.update(config_dict)
+        return tmp
+
     def _compute_derived_parameters(self):
         mobility_model = mobility.MobilityModel(self)
         self['charge_drift'].update(mobility_model.compute_parameters())
@@ -260,6 +274,13 @@ class ReadoutConfig (AbstractConfig):
     >>> rc = ReadoutConfig('path/to/config.yaml')
 
     """
+
+    @classmethod
+    def from_dict(cls, config_dict):
+        tmp = default_readout_params
+        tmp.update(config_dict)
+        return tmp
+
     def _compute_derived_parameters(self):
         # compute any required parameters from
         # those specified in the YAML
