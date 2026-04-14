@@ -1,40 +1,8 @@
-import h5py
 from gampixpy import config, coordinates, readout_objects
+
+import h5py
 import numpy as np
-
 import torch
-
-N_LABELS_COARSE = readout_objects.N_LABELS_COARSE
-N_LABELS_PIX = readout_objects.N_LABELS_PIX
-
-pixel_dtype = np.dtype([("event id", "u4"),
-                        ("hit x", "f4"),
-                        ("hit y", "f4"),
-                        ("hit z", "f4"),
-                        ("tpc index", "u4"),
-                        ("tpc x", "f4"),
-                        ("tpc y", "f4"),
-                        ("tpc z", "f4"),
-                        ("hit t", "f4"),
-                        ("hit charge", "f4"),
-                        ("attribution", "f4", N_LABELS_COARSE),
-                        ("label", "i4", N_LABELS_COARSE),
-                        ],
-                       align = True)
-coarse_tile_dtype = np.dtype([("event id", "u4"),
-                              ("hit x", "f4"),
-                              ("hit y", "f4"),
-                              ("hit z", "f4"),
-                              ("tpc index", "u4"),
-                              ("tpc x", "f4"),
-                              ("tpc y", "f4"),
-                              ("tpc z", "f4"),
-                              ("hit t", "f4"),
-                              ("hit charge", "f4"),
-                              ("attribution", "f4", N_LABELS_PIX),
-                              ("label", "i4", N_LABELS_PIX),
-                              ],
-                             align = True)
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -45,29 +13,129 @@ else:
     device = torch.device('cpu')
     print("CUDA is not available, using CPU")
 
+def dtype_factory(readout_config = config.default_readout_params):
+    """
+    dtype_factory(readout_config)
+
+    Create the appropriate record dtypes for a given readout config.
+
+    Parameters
+    ----------
+    readout_config : ReadoutConfig
+        A dict-like object containing input and derived parameters for
+        readout electronics simulation.
+
+    Returns
+    -------
+    tile_dtype, pixel_dtype : np.dtype, np.dtype
+        dtype objects specifying how record info is stored in a binary array.
+    """
+    
+    truth_tracking = readout_config['truth_tracking']['enabled']
+    n_labels = readout_config['truth_tracking']['n_labels']
+    tile_waveform_length = readout_config['coarse_tiles']['integration_length']
+    
+    if truth_tracking:
+        tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile trigger id", "u4"),
+                               ("tile tpc", "u4"),
+                               ("tile x", "f4"),
+                               ("tile y", "f4"),
+                               ("trig z", "f4"),
+                               ("trig t", "f4"),
+                               ("waveform", "f4",
+                                tile_waveform_length),
+                               ("attribution", "f4",
+                                (tile_waveform_length,
+                                 n_labels)),
+                               ("label", "i4", n_labels),
+                               ("exp x", "f4"),
+                               ("exp y", "f4"),
+                               ("exp z", "f4"),
+                               ],
+                              align = True)
+
+        pixel_dtype = np.dtype([("event id", "u4"),
+                                ("tile trigger id", "u4"),
+                                ("pixel tpc", "u4"),
+                                ("pixel x", "f4"),
+                                ("pixel y", "f4"),
+                                ("trig z", "f4"),
+                                ("trig t", "f4"),
+                                ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("attribution", "f4",
+                                 (tile_waveform_length,
+                                  n_labels)),
+                                ("label", "i4", n_labels),
+                                ("exp x", "f4"),
+                                ("exp y", "f4"),
+                                ("exp z", "f4"),
+                                ],
+                               align = True)
+    else:
+        tile_dtype = np.dtype([("event id", "u4"),
+                               ("tile trigger id", "u4"),
+                               ("tile tpc", "u4"),
+                               ("tile x", "f4"),
+                               ("tile y", "f4"),
+                               ("trig z", "f4"),
+                               ("trig t", "f4"),
+                               ("waveform", "f4",
+                                tile_waveform_length),
+                               ("exp x", "f4"),
+                               ("exp y", "f4"),
+                               ("exp z", "f4"),
+                               ],
+                              align = True)
+
+        pixel_dtype = np.dtype([("event id", "u4"),
+                                ("tile trigger id", "u4"),
+                                ("pixel tpc", "u4"),
+                                ("pixel x", "f4"),
+                                ("pixel y", "f4"),
+                                ("trig z", "f4"),
+                                ("trig t", "f4"),
+                                ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("exp x", "f4"),
+                                ("exp y", "f4"),
+                                ("exp z", "f4"),
+                                ],
+                               align = True)
+        
+    return tile_dtype, pixel_dtype
+
 def main(args):
 
-    detector_config = config.DetectorConfig(args.detector_config)
-    coordinate_manager = coordinates.CoordinateManager(detector_config)
+    conf = config.ConfigManager(detector_config = args.detector_config,
+                                physics_config = args.physics_config,
+                                readout_config = args.readout_config,
+                                )
+
+    tile_dtype, pixel_dtype = dtype_factory(conf.readout_config)
+    truth_tracking = conf.readout_config['truth_tracking']['enabled']
+
+    coordinate_manager = coordinates.CoordinateManager(conf)
 
     infile = h5py.File(args.input_gampixpy)
     
-    pixel_coords = np.array([infile['pixel_hits']['pixel x'],
-                             infile['pixel_hits']['pixel y'],
-                             infile['pixel_hits']['hit z'],
+    pixel_coords = np.array([infile['pixels']['pixel x'],
+                             infile['pixels']['pixel y'],
+                             infile['pixels']['trig z'],
                              ]).T
     pixel_coords = torch.tensor(pixel_coords)
     pixel_exp_coords = coordinate_manager.to_experiment_coords(pixel_coords,
-                                                               infile['pixel_hits']['pixel tpc']
+                                                               infile['pixels']['pixel tpc']
                                                                )
 
-    coarse_coords = np.array([infile['coarse_hits']['tile x'],
-                              infile['coarse_hits']['tile y'],
-                              infile['coarse_hits']['hit z'],
+    coarse_coords = np.array([infile['tiles']['tile x'],
+                              infile['tiles']['tile y'],
+                              infile['tiles']['trig z'],
                               ]).T
     coarse_coords = torch.tensor(coarse_coords)
     coarse_exp_coords = coordinate_manager.to_experiment_coords(coarse_coords,
-                                                                infile['coarse_hits']['tile tpc']
+                                                                infile['tiles']['tile tpc']
                                                                 )
 
     output_filename = args.output_file
@@ -76,40 +144,44 @@ def main(args):
     outfile.copy(infile['meta'],
                  'meta')
 
-    outfile.create_dataset('pixel_hits',
-                           shape = infile['pixel_hits'].shape,
+    outfile.create_dataset('pixels',
+                           shape = infile['pixels'].shape,
                            dtype = pixel_dtype,
                            maxshape = (None,))
-    outfile.create_dataset('coarse_hits',
-                           shape = infile['coarse_hits'].shape,
-                           dtype = coarse_tile_dtype,
+    outfile.create_dataset('tiles',
+                           shape = infile['tiles'].shape,
+                           dtype = tile_dtype,
                            maxshape = (None,))
 
-    outfile['pixel_hits']['event id'] = infile['pixel_hits']['event id']
-    outfile['pixel_hits']['hit x'] = pixel_exp_coords[:,0].cpu().numpy()
-    outfile['pixel_hits']['hit y'] = pixel_exp_coords[:,1].cpu().numpy()
-    outfile['pixel_hits']['hit z'] = pixel_exp_coords[:,2].cpu().numpy()
-    outfile['pixel_hits']['tpc index'] = infile['pixel_hits']['pixel tpc']
-    outfile['pixel_hits']['tpc x'] = pixel_coords[:,0].cpu().numpy()
-    outfile['pixel_hits']['tpc y'] = pixel_coords[:,1].cpu().numpy()
-    outfile['pixel_hits']['tpc z'] = pixel_coords[:,2].cpu().numpy()
-    outfile['pixel_hits']['hit t'] = infile['pixel_hits']['hit t']
-    outfile['pixel_hits']['hit charge'] = infile['pixel_hits']['hit charge']
-    outfile['pixel_hits']['attribution'] = infile['pixel_hits']['attribution']
-    outfile['pixel_hits']['label'] = infile['pixel_hits']['label']
+    outfile['pixels']['event id'] = infile['pixels']['event id']
+    outfile['pixels']['pixel tpc'] = infile['pixels']['pixel tpc']
+    outfile['pixels']['pixel x'] = infile['pixels']['pixel x']
+    outfile['pixels']['pixel y'] = infile['pixels']['pixel y']
+    outfile['pixels']['trig z'] = infile['pixels']['trig z']
+    outfile['pixels']['trig t'] = infile['pixels']['trig t']
+    outfile['pixels']['waveform'] = infile['pixels']['waveform']
 
-    outfile['coarse_hits']['event id'] = infile['coarse_hits']['event id']
-    outfile['coarse_hits']['hit x'] = coarse_exp_coords[:,0].cpu().numpy()
-    outfile['coarse_hits']['hit y'] = coarse_exp_coords[:,1].cpu().numpy()
-    outfile['coarse_hits']['hit z'] = coarse_exp_coords[:,2].cpu().numpy()
-    outfile['coarse_hits']['tpc index'] = infile['coarse_hits']['tile tpc']
-    outfile['coarse_hits']['tpc x'] = coarse_coords[:,0].cpu().numpy()
-    outfile['coarse_hits']['tpc y'] = coarse_coords[:,1].cpu().numpy()
-    outfile['coarse_hits']['tpc z'] = coarse_coords[:,2].cpu().numpy()
-    outfile['coarse_hits']['hit t'] = infile['coarse_hits']['hit t']
-    outfile['coarse_hits']['hit charge'] = infile['coarse_hits']['hit charge']
-    outfile['coarse_hits']['attribution'] = infile['coarse_hits']['attribution']
-    outfile['coarse_hits']['label'] = infile['coarse_hits']['label']
+    outfile['pixels']['exp x'] = pixel_exp_coords[:,0].cpu().numpy()
+    outfile['pixels']['exp y'] = pixel_exp_coords[:,1].cpu().numpy()
+    outfile['pixels']['exp z'] = pixel_exp_coords[:,2].cpu().numpy()
+
+    outfile['tiles']['event id'] = infile['tiles']['event id']
+    outfile['tiles']['tile tpc'] = infile['tiles']['tile tpc']
+    outfile['tiles']['tile x'] = infile['tiles']['tile x']
+    outfile['tiles']['tile y'] = infile['tiles']['tile y']
+    outfile['tiles']['trig z'] = infile['tiles']['trig z']
+    outfile['tiles']['trig t'] = infile['tiles']['trig t']
+    outfile['tiles']['waveform'] = infile['tiles']['waveform']
+    
+    outfile['tiles']['exp x'] = coarse_exp_coords[:,0].cpu().numpy()
+    outfile['tiles']['exp y'] = coarse_exp_coords[:,1].cpu().numpy()
+    outfile['tiles']['exp z'] = coarse_exp_coords[:,2].cpu().numpy()
+
+    if truth_tracking:
+        outfile['pixels']['attribution'] = infile['pixels']['attribution']
+        outfile['pixels']['label'] = infile['pixels']['label']
+        outfile['tiles']['attribution'] = infile['tiles']['attribution']
+        outfile['tiles']['label'] = infile['tiles']['label']
 
     outfile.close()
     
@@ -132,6 +204,14 @@ if __name__ == '__main__':
                         type = str,
                         required = True,
                         help = 'detector configuration yaml')
+    parser.add_argument('-p', '--physics_config',
+                        type = str,
+                        default = "default",
+                        help = 'physics configuration yaml')
+    parser.add_argument('-r', '--readout_config',
+                        type = str,
+                        default = "default",
+                        help = 'readout configuration yaml')
 
     args = parser.parse_args()
 
