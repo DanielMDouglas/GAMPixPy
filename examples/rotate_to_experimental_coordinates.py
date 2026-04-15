@@ -1,4 +1,4 @@
-from gampixpy import config, coordinates, readout_objects
+from gampixpy import coordinates, analysis
 
 import h5py
 import numpy as np
@@ -13,7 +13,7 @@ else:
     device = torch.device('cpu')
     print("CUDA is not available, using CPU")
 
-def dtype_factory(readout_config = config.default_readout_params):
+def dtype_factory(readout_config):
     """
     dtype_factory(readout_config)
 
@@ -108,17 +108,16 @@ def dtype_factory(readout_config = config.default_readout_params):
 
 def main(args):
 
-    conf = config.ConfigManager(detector_config = args.detector_config,
-                                physics_config = args.physics_config,
-                                readout_config = args.readout_config,
-                                )
+    op = analysis.OutputParser(args.input_gampixpy)
+
+    conf = op.get_configs()
+    
+    infile = op._file_handle
 
     tile_dtype, pixel_dtype = dtype_factory(conf.readout_config)
     truth_tracking = conf.readout_config['truth_tracking']['enabled']
 
     coordinate_manager = coordinates.CoordinateManager(conf)
-
-    infile = h5py.File(args.input_gampixpy)
     
     pixel_coords = np.array([infile['pixels']['pixel x'],
                              infile['pixels']['pixel y'],
@@ -199,19 +198,6 @@ if __name__ == '__main__':
                         required = True,
                         default = "",
                         help = 'output hdf5 file to store coarse tile and pixel measurements')
-
-    parser.add_argument('-d', '--detector_config',
-                        type = str,
-                        required = True,
-                        help = 'detector configuration yaml')
-    parser.add_argument('-p', '--physics_config',
-                        type = str,
-                        default = "default",
-                        help = 'physics configuration yaml')
-    parser.add_argument('-r', '--readout_config',
-                        type = str,
-                        default = "default",
-                        help = 'readout configuration yaml')
 
     args = parser.parse_args()
 
