@@ -46,14 +46,16 @@ class ReadoutModel:
     """
     def __init__(self,
                  config_manager = default_config_manager):
+        self.config_manager = config_manager
+        
         self.readout_config = config_manager.readout_config
         self.physics_config = config_manager.physics_config
         self.detector_config = config_manager.detector_config
 
         self.coordinate_manager = CoordinateManager(config_manager)
 
-        self.PixelRecord = pixel_record_factory(self.readout_config)
-        self.TileRecord = tile_record_factory(self.readout_config)
+        self.PixelRecord = pixel_record_factory(self.config_manager)
+        self.TileRecord = tile_record_factory(self.config_manager)
         
         self.clock_start_time = 0
 

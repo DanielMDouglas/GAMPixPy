@@ -34,11 +34,11 @@ class OutputParser:
     >>> op = OutputParser('path/to/gampixpy_output.hdf5')
     >>> op.event_id = 0
     >>> op.label = 3
-    >>> pix, coarse, meta = op.get_data()
+    >>> pix, tile, meta = op.get_data()
 
     This is equivalent to 
     >>> op = OutputParser('path/to/gampixpy_output.hdf5')
-    >>> pix, coarse, meta = op.get_data(0, 3)
+    >>> pix, tile, meta = op.get_data(0, 3)
 
     """
     def __init__(self, gampix_sim_output):
@@ -51,13 +51,13 @@ class OutputParser:
 
         self._pixel_hit_event_mask = np.zeros_like(self._file_handle['pixels']['event id'],
                                                    dtype = bool)
-        self._coarse_hit_event_mask = np.zeros_like(self._file_handle['tiles']['event id'],
+        self._tile_hit_event_mask = np.zeros_like(self._file_handle['tiles']['event id'],
                                                     dtype = bool)
         self._meta_mask = np.zeros_like(self._file_handle['meta']['event id'],
                                         dtype = bool)
 
         self._pixel_hit_label_mask = np.empty(0, dtype = bool)
-        self._pixel_coarse_label_mask = np.empty(0, dtype = bool)
+        self._pixel_tile_label_mask = np.empty(0, dtype = bool)
 
         self._event_indices = np.unique(self._file_handle['meta']['event id'])
         self._label_list = np.empty(0)
@@ -102,31 +102,42 @@ class OutputParser:
 
     def eval_event_mask(self):
         self._pixel_hit_event_mask = self._file_handle['pixels']['event id'] == self.event_id
-        self._coarse_hit_event_mask = self._file_handle['tiles']['event id'] == self.event_id
+        self._tile_hit_event_mask = self._file_handle['tiles']['event id'] == self.event_id
         self._meta_mask = self._file_handle['meta']['event id'] == self.event_id
 
     def eval_label_mask(self):
         event_pix = self._file_handle['pixels'][self._pixel_hit_event_mask]
         event_pix_label = event_pix['label']
         event_pix_attr = event_pix['attribution']
-        maj_label_pix = np.array([pix_label[np.argmax(pix_attr)]
-                                  for pix_label, pix_attr in zip(event_pix_label,
-                                                                 event_pix_attr)])
+        event_pix_wf = event_pix['waveform']
+        
+        event_pix_ind = np.argmax(np.sum(event_pix_attr*event_pix_wf[:,:,None],
+                                         axis = 1),
+                                  axis = 1)
+        maj_label_pix = np.array([pix_label[pix_ind]
+                                  for pix_label, pix_ind
+                                  in zip(event_pix_label,
+                                         event_pix_ind)])
+        
+        event_tile = self._file_handle['tiles'][self._tile_hit_event_mask]
+        event_tile_label = event_tile['label']
+        event_tile_attr = event_tile['attribution']
+        event_tile_wf = event_tile['waveform']
 
-        event_coarse = self._file_handle['tiles'][self._coarse_hit_event_mask]
-        event_coarse_label = event_coarse['label']
-        event_coarse_attr = event_coarse['attribution']
-        maj_label_coarse = np.array([coarse_label[np.argmax(coarse_attr)]
-                                     for coarse_label, coarse_attr in zip(event_coarse_label,
-                                                                          event_coarse_attr)])
+        event_tile_ind = np.argmax(np.sum(event_tile_attr*event_tile_wf[:,:,None],
+                                         axis = 1),
+                                  axis = 1)
+        maj_label_tile = np.array([tile_label[tile_ind]
+                                  for tile_label, tile_ind
+                                  in zip(event_tile_label,
+                                         event_tile_ind)])
 
         self._label_list = np.unique(maj_label_pix)
         
         # need to handle label reduction
         self._pixel_hit_label_mask = maj_label_pix == self.label
-        self._coarse_hit_label_mask = maj_label_coarse == self.label
-        # self._meta_mask *= self._file_handle['meta']['label'] == self.label
-
+        self._tile_hit_label_mask = maj_label_tile == self.label
+        
     def get_configs(self):
         detector_config = pickle.loads(self._file_handle.attrs['detector config'])
         physics_config = pickle.loads(self._file_handle.attrs['physics config'])
@@ -148,10 +159,10 @@ class OutputParser:
             self.label = label
 
         sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
-        sel_coarse_hits = self._file_handle['tiles'][self._coarse_hit_event_mask][self._coarse_hit_label_mask]
+        sel_tile_hits = self._file_handle['tiles'][self._tile_hit_event_mask][self._tile_hit_label_mask]
         sel_meta = self._file_handle['meta'][self._meta_mask]
 
-        return sel_pixel_hits, sel_coarse_hits, sel_meta
+        return sel_pixel_hits, sel_tile_hits, sel_meta
 
     def __iter__(self, *args, **kwargs):
         # iterate through all outputs
@@ -195,23 +206,23 @@ class CrossReferenceParser:
     def __init__(self,
                  input_edepsim,
                  gampix_sim_output,
-                 config_manager = default_config_manager,
                  ):
-        self.edepsim = input_edepsim
-        self.input_parser = EdepSimParser(input_edepsim,
-                                          config_manager = config_manager,
-                                          )
         
-        self.gampixsim = gampix_sim_output
-        self.output_parser = OutputParser(gampix_sim_output)
-
         self._event_id = NULL_EVENT
         self._label = NULL_LABEL
 
-        self._config_manager = config_manager
-
-        self._event_indices = self.output_parser._event_indices
         self._label_list = np.empty(0)
+
+        self.gampixsim = gampix_sim_output
+        self.output_parser = OutputParser(gampix_sim_output)
+
+        self._config_manager = self.get_configs()
+        self._event_indices = self.output_parser._event_indices
+
+        self.edepsim = input_edepsim
+        self.input_parser = EdepSimParser(input_edepsim,
+                                          config_manager = self._config_manager,
+                                          )
 
     @property
     def event_id(self):
@@ -238,6 +249,11 @@ class CrossReferenceParser:
         """
         return self._label_list
         
+    def get_configs(self):
+        config_manager = self.output_parser.get_configs()
+
+        return config_manager
+
     def get_data(self,
                  *args,
                  event_id = None,
