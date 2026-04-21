@@ -73,7 +73,7 @@ class CoordinateManager:
         assert len(coords.shape) == 2, "Unsupported shape for input coordinates!"
         assert coords.shape[-1] == 3, "Input coordinates must have length 3 in axis -1!"
 
-        if type(tpc_index) in [int, list, np.ndarray]:
+        if type(tpc_index) in [int, list, np.ndarray, np.uint32]:
             tpc_index = torch.tensor(tpc_index).int()
 
         assert type(tpc_index) == torch.Tensor, "Usupported input type for tpc_index: "+str(type(tpc_index))

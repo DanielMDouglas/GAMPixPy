@@ -86,17 +86,16 @@ def dtype_factory(readout_config = config.default_readout_params):
         
     return tile_dtype, pixel_dtype
 
-def pixel_record_factory(readout_config = config.default_readout_params):
+def pixel_record_factory(config_manager = config.default_config_manager):
     """
-    pixel_record_factory(readout_config)
+    pixel_record_factory(config_manager)
 
     Create the appropriate record class for a given readout config.
 
     Parameters
     ----------
-    readout_config : ReadoutConfig
-        A dict-like object containing input and derived parameters for
-        readout electronics simulation.
+    config_manager : ConfigManager
+        A container object for managing multiple configuration dicts.
 
     Returns
     -------
@@ -104,6 +103,9 @@ def pixel_record_factory(readout_config = config.default_readout_params):
         class specifying the PixelRecord data container.
 
     """
+
+    readout_config = config_manager.readout_config
+    physics_config = config_manager.physics_config
 
     truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
@@ -192,11 +194,16 @@ def pixel_record_factory(readout_config = config.default_readout_params):
             trigger_time = array['trig t'],
             dt = readout_config['pixels']['clock_interval']
             timeticks = trigger_time + dt*np.arange(tile_waveform_length)
+
+            trigger_depth = array['trig z']
+            v_drift = physics_config['charge_drift']['drift_speed']
+            depthticks = trigger_depth + dt*np.arange(tile_waveform_length)*v_drift
+
             return cls(array['pixel tpc'],
                        [array['pixel x'], array['pixel y']],
                        array['tile trigger id'],
                        trigger_time,
-                       array['trig z'],
+                       depthticks,
                        timeticks,
                        array['waveform'],
                        array['attribution'],
@@ -205,17 +212,16 @@ def pixel_record_factory(readout_config = config.default_readout_params):
 
     return PixelRecord
 
-def tile_record_factory(readout_config = config.default_readout_params):
+def tile_record_factory(config_manager = config.default_config_manager):
     """
-    tile_record_factory(readout_config)
+    tile_record_factory(config_manager)
 
     Create the appropriate record class for a given readout config.
 
     Parameters
     ----------
-    readout_config : ReadoutConfig
-        A dict-like object containing input and derived parameters for
-        readout electronics simulation.
+    config_manager : ConfigManager
+        A container object for managing multiple configuration dicts.
 
     Returns
     -------
@@ -223,7 +229,10 @@ def tile_record_factory(readout_config = config.default_readout_params):
         class specifying the TileRecord data container.
 
     """
-    
+
+    readout_config = config_manager.readout_config
+    physics_config = config_manager.physics_config
+
     truth_tracking = readout_config['truth_tracking']['enabled']
     if truth_tracking:
         n_labels = readout_config['truth_tracking']['n_labels']
