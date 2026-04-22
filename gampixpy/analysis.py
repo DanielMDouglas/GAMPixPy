@@ -288,3 +288,52 @@ class CrossReferenceParser:
             for label in self._label_list:
                 self.label = label
                 yield self.get_data()
+
+class SparseTensorConverter (OutputParser):
+    """
+    SparseTensorConverter
+
+    Initialize a new converter object which can produce MinkowskiEngine
+    SparseTensors
+    
+    Parameters
+    ----------
+    gampix_sim_output : file-like
+        A string or os.path-like object pointing to an hdf5 file containing
+        some simulated detector output.
+
+    Returns
+    -------
+    out : SparseTensorConverter
+        An SparseTensorConverter object which can read hdf5 output and produce
+        sparsetensors with an iterable interface (as in a torch dataloader).
+    
+    See Also
+    --------
+    OutputParser : Parent class for paging through outputs of GAMPixPy.
+    CrossReferenceParser : Class for paging through input and outputs of GAMPixPy
+                           using labels from truth-tracking mode.
+
+    """
+
+    def get_sparse_tensor(self,
+                          event_id = None,
+                          label = None,
+                          label_reduction_method = 'max'):
+
+        import MinkowskiEngine as ME
+
+        data = self.get_data(event_id,
+                             label,
+                             label_reduction_method)
+
+        pixel, tile, meta = data
+
+        
+    
+    def __iter__(self, *args, **kwargs):
+        for event_id in self._event_indices:
+            self.event_id = event_id
+            for label in self._label_list:
+                self.label = label
+                yield self.get_sparse_tensor()
