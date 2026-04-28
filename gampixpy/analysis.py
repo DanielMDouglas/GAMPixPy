@@ -329,7 +329,14 @@ class SparseTensorConverter (OutputParser):
 
         pixel, tile, meta = data
 
-        
+        pixel_coords = torch.tensor([])
+        pixel_features = torch.tenor([])
+
+        tile_coords = torch.tensor([])
+        tile_features = torch.tensor([])
+
+        # pixel_st =
+        # tile_st = 
     
     def __iter__(self, *args, **kwargs):
         for event_id in self._event_indices:
