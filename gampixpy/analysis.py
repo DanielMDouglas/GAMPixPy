@@ -57,7 +57,7 @@ class OutputParser:
                                         dtype = bool)
 
         self._pixel_hit_label_mask = np.empty(0, dtype = bool)
-        self._pixel_tile_label_mask = np.empty(0, dtype = bool)
+        self._tile_hit_label_mask = np.empty(0, dtype = bool)
 
         self._event_indices = np.unique(self._file_handle['meta']['event id'])
         self._label_list = np.empty(0)
@@ -101,9 +101,9 @@ class OutputParser:
         return self._label_list
 
     def eval_event_mask(self):
-        self._pixel_hit_event_mask = self._file_handle['pixels']['event id'] == self.event_id
-        self._tile_hit_event_mask = self._file_handle['tiles']['event id'] == self.event_id
-        self._meta_mask = self._file_handle['meta']['event id'] == self.event_id
+        self._pixel_hit_event_mask = self._file_handle['pixels']['event id'] == self._event_id
+        self._tile_hit_event_mask = self._file_handle['tiles']['event id'] == self._event_id
+        self._meta_mask = self._file_handle['meta']['event id'] == self._event_id
 
     def eval_label_mask(self):
         event_pix = self._file_handle['pixels'][self._pixel_hit_event_mask]
@@ -135,8 +135,8 @@ class OutputParser:
         self._label_list = np.unique(maj_label_pix)
         
         # need to handle label reduction
-        self._pixel_hit_label_mask = maj_label_pix == self.label
-        self._tile_hit_label_mask = maj_label_tile == self.label
+        self._pixel_hit_label_mask = maj_label_pix == self._label
+        self._tile_hit_label_mask = maj_label_tile == self._label
         
     def get_configs(self):
         detector_config = pickle.loads(self._file_handle.attrs['detector config'])
@@ -153,11 +153,11 @@ class OutputParser:
                  event_id = None,
                  label = None,
                  label_reduction_method = 'max'):
-        if event_id:
+        if event_id is not None:
             self.event_id = event_id
-        if label:
+        if label is not None:
             self.label = label
-
+        
         sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
         sel_tile_hits = self._file_handle['tiles'][self._tile_hit_event_mask][self._tile_hit_label_mask]
         sel_meta = self._file_handle['meta'][self._meta_mask]
