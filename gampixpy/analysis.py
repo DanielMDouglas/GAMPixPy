@@ -343,6 +343,31 @@ class SparseTensorConverter (OutputParser):
 
         self._batch_size = batch_size
 
+        # sample order randomization
+        self._sample_load_order = np.empty(0,)
+        self._sequential = False
+        self.gen_sample_load_order()
+
+    @property
+    def sample_load_order(self):
+        return self._sample_load_order
+
+    @sample_load_order.setter
+    def sample_load_order(self, sample_load_order):
+        self._sample_load_order = sample_load_order
+
+    def gen_sample_load_order(self):
+        # set the order that events/images within a given file
+        # are sampled
+        # This should be redone after each file is loaded
+        n_events = len(np.unique(self._file_handle['meta']['event id']))
+        if self._sequential:
+            self.sample_load_order = np.arange(n_events)
+        else:
+            self.sample_load_order = np.random.choice(n_events,
+                                                      size = n_events,
+                                                      replace = False)
+
     @property
     def event_id(self):
         """
@@ -377,7 +402,9 @@ class SparseTensorConverter (OutputParser):
     def get_features_and_indices(self,
                                  event_id = None,
                                  label = None,
-                                 label_reduction_method = 'max'):
+                                 label_reduction_method = 'max',
+                                 batch_index = 0,
+                                 **kwargs):
 
         data = self.get_data(event_id,
                              label,
@@ -408,14 +435,21 @@ class SparseTensorConverter (OutputParser):
         t_ind = (t/clock_int).int()
         t_ind -= torch.min(t_ind)
      
-        this_batch_ind = 0
-        batch_ind = this_batch_ind*torch.ones_like(x_ind)
+        batch_ind = batch_index*torch.ones_like(x_ind)
         
         indices = torch.stack([batch_ind, x_ind, y_ind, t_ind]).T
 
-        spatial_shape = [torch.max(x_ind)+1,
-                         torch.max(y_ind)+1,
-                         torch.max(t_ind)+1,
+        return features, indices
+
+    def get_sparsetensor(self,
+                         *args,
+                         **kwargs):
+
+        features, indices = self.get_features_and_indices(*args, **kwargs)
+        
+        spatial_shape = [torch.max(indices[:,1])+1,
+                         torch.max(indices[:,2])+1,
+                         torch.max(indices[:,3])+1,
                          ]
 
         pixel_st = spconv.SparseConvTensor(features,
@@ -423,7 +457,6 @@ class SparseTensorConverter (OutputParser):
                                            spatial_shape,
                                            1)
      
-        # return features, indices
         return pixel_st
 
     def get_vertex_depth(self, event_id = None):
@@ -451,8 +484,41 @@ class SparseTensorConverter (OutputParser):
         return depth
     
     def __iter__(self, *args, **kwargs):
-        for event_id in self._event_indices:
+        """
+        Iterator interface to produce SparseTensor batches.
+        Batch size is defined upon construction of the convertor object.
+        """
+        
+        im_count = 0
+        
+        for event_id in self._sample_load_order:
             self.event_id = event_id
             for label in self._label_list:
                 self.label = label
-                yield self.get_sparse_tensor()
+                depth = self.get_vertex_depth()
+                feats, inds = self.get_features_and_indices(batch_index = im_count)
+
+                if im_count == 0:
+                    batch_depth = depth[None]
+                    batch_feats = feats
+                    batch_inds = inds
+                else:
+                    batch_depth = torch.cat((batch_depth, depth[None]))
+                    batch_feats = torch.cat((batch_feats, feats))
+                    batch_inds = torch.cat((batch_inds, inds))
+
+                im_count += 1
+
+                if im_count == self._batch_size:
+                    spatial_shape = [torch.max(batch_inds[:,1])+1,
+                                     torch.max(batch_inds[:,2])+1,
+                                     torch.max(batch_inds[:,3])+1,
+                                     ]
+                    st = spconv.SparseConvTensor(batch_feats,
+                                                 batch_inds,
+                                                 spatial_shape,
+                                                 self._batch_size)
+
+                    yield st, batch_depth
+
+                    im_count = 0
