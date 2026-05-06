@@ -471,10 +471,10 @@ class SparseTensorConverter (OutputParser):
         # get the metadata for this event 
         event_meta = self._file_handle['meta'][self._meta_mask]
         # get the vertex position
-        source_point_exp = torch.tensor([event_meta['vertex x'],
-                                         event_meta['vertex y'],
-                                         event_meta['vertex z'],
-                                         ]).T
+        source_point_exp = torch.tensor(np.array([event_meta['vertex x'],
+                                                  event_meta['vertex y'],
+                                                  event_meta['vertex z'],
+                                                  ])).T
 
         # rotate to tpc coordinate system
         cm = CoordinateManager(self._config_manager)
