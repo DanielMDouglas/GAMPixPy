@@ -35,6 +35,8 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("trigger", "?"),
+                               ("true charge", "f4"),
                                ("waveform", "f4",
                                 tile_waveform_length),
                                ("attribution", "f4",
@@ -51,6 +53,8 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("trigger", "?"),
+                                ("true charge", "f4"),
                                 ("waveform", "f4",
                                  tile_waveform_length),
                                 ("attribution", "f4",
@@ -67,6 +71,8 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("true charge", "f4"),
+                               ("trigger", "?"),
                                ("waveform", "f4",
                                 tile_waveform_length),
                                ],
@@ -79,6 +85,8 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("trigger", "?"),
+                                ("true charge", "f4"),
                                 ("waveform", "f4",
                                  tile_waveform_length),
                                 ],
@@ -119,6 +127,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                     trigger_timestamp,
                     trigger_depth,
                     timeticks,
+                    trigger,
+                    true_charge,
                     waveform,
                     attribution,
                     labels)
@@ -142,6 +152,10 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             arrival_time*v_drift, and so ignores some details of hit finding.
         timeticks : array(float)
             Clock values corresponding to each discrete measurement in the waveform.
+        trigger : bool
+            Does this product represent a trigger, or some non-trigger data?
+        true_charge : float
+            The true integrated charge associated with this interval.
         waveform : array(float)
             Measured charge series (or correlate) for this trigger.
         attribution : array(float, float)
@@ -162,6 +176,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                      trigger_time,
                      trigger_depth,
                      timeticks,
+                     trigger,
+                     true_charge,
                      waveform,
                      attribution,
                      labels):
@@ -171,6 +187,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             self.trigger_time = trigger_time
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
+            self.trigger = trigger
+            self.true_charge = true_charge
             self.waveform = waveform
 
             if self._truth_tracking:
@@ -205,6 +223,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                        trigger_time,
                        depthticks,
                        timeticks,
+                       array['trigger'],
+                       array['true_charge'],
                        array['waveform'],
                        array['attribution'],
                        array['label'],
@@ -249,6 +269,8 @@ def tile_record_factory(config_manager = config.default_config_manager):
                     trigger_timestamp,
                     trigger_depth,
                     timeticks,
+                    trigger,
+                    true_charge,
                     waveform,
                     attribution,
                     labels)
@@ -272,6 +294,10 @@ def tile_record_factory(config_manager = config.default_config_manager):
             arrival_time*v_drift, and so ignores some details of hit finding.
         timeticks : array(float)
             Clock values corresponding to each discrete measurement in the waveform.
+        trigger : bool
+            Does this product represent a trigger, or some non-trigger data?
+        true_charge : float
+            The true integrated charge associated with this interval.
         waveform : array(float)
             Measured charge series (or correlate) for this trigger.
         attribution : array(float, float)
@@ -292,6 +318,8 @@ def tile_record_factory(config_manager = config.default_config_manager):
                      trigger_time,
                      trigger_depth,
                      timeticks,
+                     trigger,
+                     true_charge,
                      waveform,
                      attribution,
                      labels):
@@ -301,6 +329,8 @@ def tile_record_factory(config_manager = config.default_config_manager):
             self.trigger_time = trigger_time
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
+            self.trigger = trigger
+            self.true_charge = true_charge
             self.waveform = waveform
 
             # save the _n_label highest contributing labels
@@ -331,6 +361,8 @@ def tile_record_factory(config_manager = config.default_config_manager):
                        trigger_time,
                        array['trig z'],
                        timeticks,
+                       array['trigger'],
+                       array['true_charge'],
                        array['waveform'],
                        array['attribution'],
                        array['label'],
