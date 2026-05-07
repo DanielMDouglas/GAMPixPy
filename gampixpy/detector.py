@@ -666,6 +666,8 @@ class GAMPixModel (ReadoutModel):
             tile_center = (tile_key[1], tile_key[2])
 
             hold_length = self.readout_config['coarse_tiles']['integration_length']            
+            true_charge_integration_length = 10 + self.readout_config['coarse_tiles']['integration_length']
+            true_charge_integration_offset = 5
             
             # search along the bins until no more threshold crossings
             no_more_hits = False
@@ -698,7 +700,9 @@ class GAMPixModel (ReadoutModel):
                     
                     recorded_waveform = interval_charge[hit_index:hit_index+hold_length]
                     waveform_ticks = time_ticks[hit_index:hit_index+hold_length]
-                    
+
+                    true_charge = torch.sum(interval_charge[hit_index-true_charge_integration_offset:hit_index+true_charge_integration_length])
+
                     # break down the waveform into its components
                     if self.readout_config['truth_tracking']['enabled']:
                         recorded_waveform_by_label = interval_charge_by_label[hit_index:hit_index+hold_length,:]
@@ -729,6 +733,8 @@ class GAMPixModel (ReadoutModel):
                     # remove already measured charge so it does not
                     # interfere with successive hits
                     interval_charge[:hit_index+hold_length] = 0
+
+                    trigger = True
                     
                     hits.append(self.TileRecord(tile_tpc,
                                                 tile_center,
@@ -736,6 +742,8 @@ class GAMPixModel (ReadoutModel):
                                                 threshold_crossing_t.item(),
                                                 threshold_crossing_z.item(),
                                                 waveform_ticks.cpu().numpy(),
+                                                trigger,
+                                                true_charge,
                                                 recorded_waveform.cpu().numpy(),
                                                 attribution_by_label.cpu().numpy(),
                                                 labels.cpu().numpy()))
@@ -775,6 +783,9 @@ class GAMPixModel (ReadoutModel):
         
         """
         hits = []
+
+        true_charge_integration_length = 10 + self.readout_config['coarse_tiles']['integration_length']
+        true_charge_integration_offset = 5
         
         for pixel_key, pixel_value in pixel_timeseries.items():
             pixel_tpc = pixel_key[0]
@@ -792,6 +803,9 @@ class GAMPixModel (ReadoutModel):
             discrim_charge = torch.sum(interval_charge)
             threshold = self.readout_config['pixels']['noise']*self.readout_config['pixels']['threshold_sigma']
             if discrim_charge > threshold:
+
+                trigger = True
+                true_charge = torch.sum(interval_charge)
 
                 if self.readout_config['truth_tracking']['enabled']:
                     attribution_by_label = interval_charge_by_label.T/interval_charge
@@ -813,6 +827,8 @@ class GAMPixModel (ReadoutModel):
                                              time_ticks.cpu().numpy()[0],
                                              depth.cpu().numpy(),
                                              time_ticks.cpu().numpy(),
+                                             trigger,
+                                             true_charge,
                                              interval_charge.cpu().numpy(),
                                              attribution_by_label.cpu().numpy(),
                                              labels.cpu().numpy(),

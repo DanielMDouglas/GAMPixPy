@@ -82,6 +82,8 @@ class Track:
                                                   tile_record.tile_pos[1],
                                                   tile_record.trigger_depth,
                                                   tile_record.trigger_time,
+                                                  tile_record.trigger,
+                                                  tile_record.true_charge,
                                                   tile_record.waveform,
                                                   tile_record.attribution,
                                                   tile_record.labels)
@@ -94,6 +96,8 @@ class Track:
                                             pixel_record.pixel_pos[1],
                                             pixel_record.trigger_depth[0],
                                             pixel_record.trigger_time,
+                                            pixel_record.trigger,
+                                            pixel_record.true_charge,
                                             pixel_record.waveform,
                                             pixel_record.attribution,
                                             pixel_record.labels)
@@ -108,6 +112,8 @@ class Track:
                                                   tile_record.tile_pos[1],
                                                   tile_record.trigger_depth,
                                                   tile_record.trigger_time,
+                                                  tile_record.trigger,
+                                                  tile_record.true_charge,
                                                   tile_record.waveform)
                                                  for tile_record in self.coarse_tiles_samples],
                                                 dtype = tile_dtype)
@@ -118,6 +124,8 @@ class Track:
                                             pixel_record.pixel_pos[1],
                                             pixel_record.trigger_depth[0],
                                             pixel_record.trigger_time,
+                                            pixel_record.trigger,
+                                            pixel_record.true_charge,
                                             pixel_record.waveform)
                                            for pixel_record in self.pixel_samples],
                                           dtype = pixel_dtype)
