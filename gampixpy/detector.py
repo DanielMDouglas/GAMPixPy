@@ -727,8 +727,10 @@ class GAMPixModel (ReadoutModel):
                                                     torch.zeros(diff)))
                         
                     if not nonoise:
-                        recorded_waveform = torch.normal(recorded_waveform,
-                                                         torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+                        recorded_waveform_with_noise = torch.normal(recorded_waveform,
+                                                                    torch.tensor(self.readout_config['coarse_tiles']['noise']).float())
+                    else:
+                        recorded_waveform_with_noise = recorded_waveform,
 
                     # remove already measured charge so it does not
                     # interfere with successive hits
@@ -742,8 +744,7 @@ class GAMPixModel (ReadoutModel):
                                                 threshold_crossing_t.item(),
                                                 threshold_crossing_z.item(),
                                                 waveform_ticks.cpu().numpy(),
-                                                trigger,
-                                                true_charge,
+                                                recorded_waveform_with_noise.cpu().numpy(),
                                                 recorded_waveform.cpu().numpy(),
                                                 attribution_by_label.cpu().numpy(),
                                                 labels.cpu().numpy()))
@@ -817,7 +818,10 @@ class GAMPixModel (ReadoutModel):
                     attribution_by_label = torch.zeros((interval_charge.shape[0], 0))
                     
                 if not nonoise:
-                    interval_charge += torch.normal(0, self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))                
+                    interval_charge_with_noise = torch.normal(interval_charge,
+                                                              self.readout_config['pixels']['noise']*torch.ones_like(interval_charge))
+                else:
+                    interval_charge_with_noise = interval_charge
                     
                 depth = time_ticks*self.physics_config['charge_drift']['drift_speed']
 
@@ -827,8 +831,7 @@ class GAMPixModel (ReadoutModel):
                                              time_ticks.cpu().numpy()[0],
                                              depth.cpu().numpy(),
                                              time_ticks.cpu().numpy(),
-                                             trigger,
-                                             true_charge,
+                                             interval_charge_with_noise.cpu().numpy(),
                                              interval_charge.cpu().numpy(),
                                              attribution_by_label.cpu().numpy(),
                                              labels.cpu().numpy(),
