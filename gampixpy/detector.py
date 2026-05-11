@@ -666,7 +666,8 @@ class GAMPixModel (ReadoutModel):
             tile_center = (tile_key[1], tile_key[2])
 
             hold_length = self.readout_config['coarse_tiles']['integration_length']            
-            
+            trig_offset = self.readout_config['coarse_tiles']['trigger_offset']
+
             # search along the bins until no more threshold crossings
             no_more_hits = False
             while not no_more_hits:
@@ -695,13 +696,13 @@ class GAMPixModel (ReadoutModel):
 
                     # is there a better way to do this?
                     threshold_crossing_z = threshold_crossing_t*self.physics_config['charge_drift']['drift_speed']
-                    
-                    recorded_waveform = interval_charge[hit_index:hit_index+hold_length]
-                    waveform_ticks = time_ticks[hit_index:hit_index+hold_length]
+
+                    recorded_waveform = interval_charge[hit_index-trig_offset:hit_index+hold_length-trig_offset]
+                    waveform_ticks = time_ticks[hit_index-trig_offset:hit_index+hold_length-trig_offset]
 
                     # break down the waveform into its components
                     if self.readout_config['truth_tracking']['enabled']:
-                        recorded_waveform_by_label = interval_charge_by_label[hit_index:hit_index+hold_length,:]
+                        recorded_waveform_by_label = interval_charge_by_label[hit_index-trig_offset:hit_index+hold_length-trig_offset,:]
                         attribution_by_label = recorded_waveform_by_label/recorded_waveform[:,None] 
                         attribution_by_label = torch.where(torch.isfinite(attribution_by_label),
                                                            attribution_by_label,

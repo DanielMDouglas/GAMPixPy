@@ -23,6 +23,7 @@ coarse_tiles:
     value: 10.
     unit: us
   integration_length: 50
+  trigger_offset: 3
 
 pixels:
   type: pixels

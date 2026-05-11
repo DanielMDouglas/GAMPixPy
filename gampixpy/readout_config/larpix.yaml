@@ -24,6 +24,7 @@ coarse_tiles:
     unit: us
   z_bin_width: 50 # cm
   integration_length: 1
+  trigger_offset: 0
 
 pixels:
   type: pixels
