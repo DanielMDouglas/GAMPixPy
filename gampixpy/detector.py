@@ -151,9 +151,9 @@ class ReadoutModel:
         # sum(result[1,:,:], dim = -1) == track.drifted_track['charge']
         
         position = track.drifted_track['position'][sample_mask]
-        tpc_index = track.tpc_track['TPC_index'][sample_mask]
+        tpc_index = track.drifted_track['TPC_index'][sample_mask]
         charge = track.drifted_track['charge'][sample_mask]
-        label = track.tpc_track['label'][sample_mask]
+        label = track.drifted_track['label'][sample_mask]
         time = track.drifted_track['time'][sample_mask]
 
         pitch = self.readout_config['coarse_tiles']['pitch']
@@ -322,7 +322,7 @@ class ReadoutModel:
         pitch = self.readout_config['coarse_tiles']['pitch']
         for volume_name in self.detector_config['drift_volumes'].keys():
             i_tpc = self.coordinate_manager.volume_to_index[volume_name]
-            tpc_mask = track.tpc_track['TPC_index'] == i_tpc
+            tpc_mask = track.drifted_track['TPC_index'] == i_tpc
             
             min_tile = torch.tensor([-0.5*self.detector_config['drift_volumes'][volume_name]['anode_span']['width'],
                                      -0.5*self.detector_config['drift_volumes'][volume_name]['anode_span']['height'],
@@ -389,7 +389,7 @@ class ReadoutModel:
         
         position = track.drifted_track['position'][sample_mask]
         charge = track.drifted_track['charge'][sample_mask]
-        label = track.tpc_track['label'][sample_mask]
+        label = track.drifted_track['label'][sample_mask]
         time = track.drifted_track['time'][sample_mask]
         
         pitch = self.readout_config['pixels']['pitch']
@@ -571,7 +571,7 @@ class ReadoutModel:
             in_cell_mask *= track.drifted_track['position'][:,1] < y_bounds[1]
             in_cell_mask *= track.drifted_track['time'] >= t_bounds[0]
             in_cell_mask *= track.drifted_track['time'] < t_bounds[1]
-            in_cell_mask *= track.tpc_track['TPC_index'] == tile_tpc
+            in_cell_mask *= track.drifted_track['TPC_index'] == tile_tpc
 
             in_cell_positions = track.drifted_track['position'][in_cell_mask]
             in_cell_charges = track.drifted_track['charge'][in_cell_mask]
@@ -918,6 +918,9 @@ class DetectorModel:
         # in the case when there are overlapping drift volumes (this should
         # be avoided), those charges will have an entry for each volume
         self.coordinate_manager.generate_tpc_coords(sampled_track)
+
+        tpc_index = sampled_track.tpc_track['TPC_index']
+        label = sampled_track.tpc_track['label']
         
         # z-component is the distance to the anode
         drift_time = sampled_track.tpc_track['position'][:,2]/self.physics_config['charge_drift']['drift_speed'] # s
@@ -954,9 +957,27 @@ class DetectorModel:
         # might also include a sub-sampling step?
         # in case initial sampling is not fine enough
 
-        sampled_track.drifted_track = {'position': drifted_positions,
-                                       'charge': drifted_charges,
-                                       'time': arrival_time}
+        # look for charges drifting outside of the volume in the transverse direction:
+        keep_mask = torch.zeros_like(tpc_index, dtype = bool)
+        for volume_name, volume_dict in self.detector_config['drift_volumes'].items():
+            tpc_mask = tpc_index == self.coordinate_manager.volume_to_index[volume_name]
+
+            if torch.any(tpc_mask):
+                anode_corners = volume_dict['anode_corners']
+                drift_pos_subset = drifted_positions[tpc_mask,:]
+
+                in_bounds_horizontal = drift_pos_subset[:,0] >= -0.5*volume_dict['anode_span']['width']
+                in_bounds_horizontal *= drift_pos_subset[:,0] < 0.5*volume_dict['anode_span']['width']
+                in_bounds_vertical = drift_pos_subset[:,1] >= -0.5*volume_dict['anode_span']['height']
+                in_bounds_vertical *= drift_pos_subset[:,1] < 0.5*volume_dict['anode_span']['height']
+                keep_mask[tpc_mask] = in_bounds_horizontal*in_bounds_vertical
+
+        sampled_track.drifted_track = {'position': drifted_positions[keep_mask],
+                                       'charge': drifted_charges[keep_mask],
+                                       'time': arrival_time[keep_mask],
+                                       'TPC_index': tpc_index[keep_mask],
+                                       'label': label[keep_mask],
+                                       }
         return 
 
     def readout(self, drifted_track, **kwargs):

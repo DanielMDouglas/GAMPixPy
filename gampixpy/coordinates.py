@@ -199,7 +199,7 @@ class CoordinateManager:
             extent = torch.inner(track.raw_track['position'] - reference_corner, leg_vec)/leg_dists**2
             # the points which are within the drift volume are ones where the extent
             # along each leg is between 0 and 1
-            keep_mask = torch.all(extent >= 0, axis = 1)*torch.all(extent <= 1, axis = 1)
+            keep_mask = torch.all(extent >= 0, axis = 1)*torch.all(extent < 1, axis = 1)
 
             # project into TPC coordinates
             # the origin in each TPC is the anode_center, given in the detector config
