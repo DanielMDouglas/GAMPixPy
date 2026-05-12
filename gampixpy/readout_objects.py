@@ -34,7 +34,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile x", "f4"),
                                ("tile y", "f4"),
                                ("trig z", "f4"),
-                               ("trigger", "?"),
+                               ("trig t", "f4"),
                                ("waveform", "f4",
                                 tile_waveform_length),
                                ("raw waveform", "f4",
@@ -320,7 +320,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
             self.waveform = waveform
-            self.raw_waveform = waveform
+            self.raw_waveform = raw_waveform
 
             # save the _n_label highest contributing labels
             # if tere are fewer than _n_labels, label is 0
