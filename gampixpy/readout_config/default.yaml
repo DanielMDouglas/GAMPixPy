@@ -25,6 +25,7 @@ coarse_tiles:
   z_bin_width: 50
   integration_length: 1
   trigger_offset: 3
+  dead_time: 0
 
 pixels:
   type: pixels

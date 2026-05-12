@@ -688,7 +688,7 @@ class GAMPixModel (ReadoutModel):
                                         dtype = bool)
 
             hold_length = self.readout_config['coarse_tiles']['integration_length']
-            lock_time = 0 # TODO: add to config
+            dead_time = self.readout_config['coarse_tiles']['dead_time']
             offset = self.readout_config['coarse_tiles']['trigger_offset']
 
             noise = self.readout_config['coarse_tiles']['noise']
@@ -757,8 +757,8 @@ class GAMPixModel (ReadoutModel):
                         recorded_waveform_with_noise = recorded_waveform.clone(),
 
                     # lock the tile so it cannot re-trigger too soon
-                    # next possible hit is after hold_length + lock_time
-                    hit_lock[:hit_index+hold_length+lock_time] = True
+                    # next possible hit is after hold_length + dead_time
+                    hit_lock[:hit_index+hold_length+dead_time] = True
 
                     hits.append(self.TileRecord(tile_tpc,
                                                 tile_center,
