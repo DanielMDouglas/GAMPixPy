@@ -240,10 +240,10 @@ def plot_pixel_record(ax,
 def plot_drift_volumes(ax, config_manager):
     volumes_dict = config_manager.detector_config['drift_volumes']
     for volume_name, volume_dict in volumes_dict.items():
-        corners = [corner.cpu() for corner in 
+        corners = [corner.cpu().numpy() for corner in 
                    volume_dict['anode_corners'] + volume_dict['cathode_corners']]
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
-        
+
 class EventDisplay:
     """
     EventDisplay(track)
