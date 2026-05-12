@@ -35,7 +35,10 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
+                                tile_waveform_length),
+                               ("raw waveform", "f4",
                                 tile_waveform_length),
                                ("attribution", "f4",
                                 (tile_waveform_length,
@@ -51,7 +54,10 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("raw waveform", "f4",
                                  tile_waveform_length),
                                 ("attribution", "f4",
                                  (tile_waveform_length,
@@ -67,7 +73,10 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
+                                tile_waveform_length),
+                               ("raw waveform", "f4",
                                 tile_waveform_length),
                                ],
                               align = True)
@@ -79,7 +88,10 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("raw waveform", "f4",
                                  tile_waveform_length),
                                 ],
                                align = True)
@@ -120,6 +132,7 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                     trigger_depth,
                     timeticks,
                     waveform,
+                    raw_waveform,
                     attribution,
                     labels)
 
@@ -144,6 +157,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             Clock values corresponding to each discrete measurement in the waveform.
         waveform : array(float)
             Measured charge series (or correlate) for this trigger.
+        raw_waveform : array(float)
+            True charge series for this trigger, without digitization noise.
         attribution : array(float, float)
             Fractional attribution for each measurement in the waveform,
             divided into the specific label classes.
@@ -163,6 +178,7 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                      trigger_depth,
                      timeticks,
                      waveform,
+                     raw_waveform,
                      attribution,
                      labels):
             self.pixel_tpc = pixel_tpc
@@ -172,6 +188,7 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
             self.waveform = waveform
+            self.raw_waveform = raw_waveform
 
             if self._truth_tracking:
                 # save the _n_label highest contributing labels
@@ -206,6 +223,7 @@ def pixel_record_factory(config_manager = config.default_config_manager):
                        depthticks,
                        timeticks,
                        array['waveform'],
+                       array['raw waveform'],
                        array['attribution'],
                        array['label'],
                        )
@@ -250,6 +268,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
                     trigger_depth,
                     timeticks,
                     waveform,
+                    raw_waveform,
                     attribution,
                     labels)
 
@@ -274,6 +293,8 @@ def tile_record_factory(config_manager = config.default_config_manager):
             Clock values corresponding to each discrete measurement in the waveform.
         waveform : array(float)
             Measured charge series (or correlate) for this trigger.
+        raw_waveform : array(float)
+            True charge series for this trigger, without digitization noise.
         attribution : array(float, float)
             Fractional attribution for each measurement in the waveform,
             divided into the specific label classes.
@@ -293,6 +314,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
                      trigger_depth,
                      timeticks,
                      waveform,
+                     raw_waveform,
                      attribution,
                      labels):
             self.tile_tpc = tile_tpc
@@ -302,6 +324,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
             self.trigger_depth = trigger_depth
             self.timeticks = timeticks
             self.waveform = waveform
+            self.raw_waveform = raw_waveform
 
             # save the _n_label highest contributing labels
             # if tere are fewer than _n_labels, label is 0
@@ -322,7 +345,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
                         
         @classmethod
         def from_numpy(cls, array):
-            trigger_time = array['trig t'],
+            start_time = array['start t'],
             dt = readout_config['coarse_tiles']['clock_interval']
             timeticks = trigger_time + dt*np.arange(waveform.shape[0])
             return cls(array['tile tpc'],
@@ -332,6 +355,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
                        array['trig z'],
                        timeticks,
                        array['waveform'],
+                       array['raw waveform'],
                        array['attribution'],
                        array['label'],
                        )
