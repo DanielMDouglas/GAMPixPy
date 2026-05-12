@@ -149,7 +149,8 @@ def plot_tile_record(ax,
     tile_tpc = this_tile_record.tile_tpc
             
     tile_center_xy = this_tile_record.tile_pos
-    tile_center_z = this_tile_record.trigger_depth
+    v = config_manager.physics_config['charge_drift']['drift_speed']
+    tile_center_z = this_tile_record.timeticks[0]*v
 
     tpc_coords = torch.tensor([tile_center_xy[0],
                                tile_center_xy[1],
@@ -172,7 +173,6 @@ def plot_tile_record(ax,
     half_span_vertical = vertical_axis*pitch/2
     
     drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
-    v = config_manager.physics_config['charge_drift']['drift_speed']
     cell_hit_length = v*tile_config['clock_interval']*tile_config['integration_length']
     depth_span = drift_axis*cell_hit_length
     
@@ -240,10 +240,10 @@ def plot_pixel_record(ax,
 def plot_drift_volumes(ax, config_manager):
     volumes_dict = config_manager.detector_config['drift_volumes']
     for volume_name, volume_dict in volumes_dict.items():
-        corners = [corner.cpu() for corner in 
+        corners = [corner.cpu().numpy() for corner in 
                    volume_dict['anode_corners'] + volume_dict['cathode_corners']]
         draw_box_from_corners(ax, corners, **TPC_boundary_kwargs)
-        
+
 class EventDisplay:
     """
     EventDisplay(track)
