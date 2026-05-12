@@ -349,7 +349,7 @@ def tile_record_factory(config_manager = config.default_config_manager):
         def from_numpy(cls, array):
             start_time = array['start t'],
             dt = readout_config['coarse_tiles']['clock_interval']
-            timeticks = trigger_time + dt*(np.arange(waveform.shape[0])
+            timeticks = trigger_time + dt*np.arange(waveform.shape[0])
             return cls(array['tile tpc'],
                        [array['tile x'], array['tile y']],
                        array['tile trigger id'],
