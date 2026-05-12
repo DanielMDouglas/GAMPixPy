@@ -27,6 +27,7 @@ coarse_tiles:
     unit: s
   integration_length: 20
   trigger_offset: 3
+  dead_time: 0
 
 pixels:
   type: pixels
