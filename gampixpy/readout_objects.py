@@ -190,8 +190,6 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             self.waveform = waveform
             self.raw_waveform = raw_waveform
 
-            print (self.timeticks)
-
             if self._truth_tracking:
                 # save the _n_label highest contributing labels
                 # if tere are fewer than _n_labels, label is 0
