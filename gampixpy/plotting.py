@@ -149,7 +149,8 @@ def plot_tile_record(ax,
     tile_tpc = this_tile_record.tile_tpc
             
     tile_center_xy = this_tile_record.tile_pos
-    tile_center_z = this_tile_record.trigger_depth
+    v = config_manager.physics_config['charge_drift']['drift_speed']
+    tile_center_z = this_tile_record.timeticks[0]*v
 
     tpc_coords = torch.tensor([tile_center_xy[0],
                                tile_center_xy[1],
@@ -172,7 +173,6 @@ def plot_tile_record(ax,
     half_span_vertical = vertical_axis*pitch/2
     
     drift_axis = this_volume_dict['drift_axis'].cpu().numpy()
-    v = config_manager.physics_config['charge_drift']['drift_speed']
     cell_hit_length = v*tile_config['clock_interval']*tile_config['integration_length']
     depth_span = drift_axis*cell_hit_length
     
