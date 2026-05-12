@@ -35,6 +35,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
                                 tile_waveform_length),
                                ("raw waveform", "f4",
@@ -53,6 +54,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
                                  tile_waveform_length),
                                 ("raw waveform", "f4",
@@ -71,6 +73,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
                                 tile_waveform_length),
                                ("raw waveform", "f4",
@@ -85,6 +88,7 @@ def dtype_factory(readout_config = config.default_readout_params):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
                                  tile_waveform_length),
                                 ("raw waveform", "f4",
@@ -185,6 +189,8 @@ def pixel_record_factory(config_manager = config.default_config_manager):
             self.timeticks = timeticks
             self.waveform = waveform
             self.raw_waveform = raw_waveform
+
+            print (self.timeticks)
 
             if self._truth_tracking:
                 # save the _n_label highest contributing labels
@@ -341,9 +347,9 @@ def tile_record_factory(config_manager = config.default_config_manager):
                         
         @classmethod
         def from_numpy(cls, array):
-            trigger_time = array['trig t'],
+            start_time = array['start t'],
             dt = readout_config['coarse_tiles']['clock_interval']
-            timeticks = trigger_time + dt*np.arange(waveform.shape[0])
+            timeticks = trigger_time + dt*(np.arange(waveform.shape[0])
             return cls(array['tile tpc'],
                        [array['tile x'], array['tile y']],
                        array['tile trigger id'],

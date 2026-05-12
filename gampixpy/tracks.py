@@ -82,6 +82,7 @@ class Track:
                                                   tile_record.tile_pos[1],
                                                   tile_record.trigger_depth,
                                                   tile_record.trigger_time,
+                                                  tile_record.timeticks[0],
                                                   tile_record.waveform,
                                                   tile_record.raw_waveform,
                                                   tile_record.attribution,
@@ -95,6 +96,7 @@ class Track:
                                             pixel_record.pixel_pos[1],
                                             pixel_record.trigger_depth[0],
                                             pixel_record.trigger_time,
+                                            pixel_record.timeticks[0],
                                             pixel_record.waveform,
                                             pixel_record.raw_waveform,
                                             pixel_record.attribution,
@@ -110,6 +112,7 @@ class Track:
                                                   tile_record.tile_pos[1],
                                                   tile_record.trigger_depth,
                                                   tile_record.trigger_time,
+                                                  tile_record.timeticks[0],
                                                   tile_record.waveform,
                                                   tile_record.raw_waveform)
                                                  for tile_record in self.coarse_tiles_samples],
@@ -121,6 +124,7 @@ class Track:
                                             pixel_record.pixel_pos[1],
                                             pixel_record.trigger_depth[0],
                                             pixel_record.trigger_time,
+                                            pixel_record.timeticks[0],
                                             pixel_record.waveform,
                                             pixel_record.raw_waveform)
                                            for pixel_record in self.pixel_samples],
