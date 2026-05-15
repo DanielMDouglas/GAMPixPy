@@ -7,7 +7,6 @@ import h5py
 import numpy as np
 import pickle
 import torch
-import spconv.pytorch as spconv
         
 class OutputParser:
     """
@@ -320,6 +319,8 @@ class SparseTensorConverter (OutputParser):
 
     """
     def __init__(self, gampix_sim_output, batch_size = 1):
+        import spconv.pytorch as spconv
+
         self.gampix_sim = gampix_sim_output
 
         self._file_handle = h5py.File(self.gampix_sim)
