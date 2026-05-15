@@ -43,7 +43,10 @@ def dtype_factory(readout_config):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
+                                tile_waveform_length),
+                               ("raw waveform", "f4",
                                 tile_waveform_length),
                                ("attribution", "f4",
                                 (tile_waveform_length,
@@ -62,7 +65,10 @@ def dtype_factory(readout_config):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("raw waveform", "f4",
                                  tile_waveform_length),
                                 ("attribution", "f4",
                                  (tile_waveform_length,
@@ -81,7 +87,10 @@ def dtype_factory(readout_config):
                                ("tile y", "f4"),
                                ("trig z", "f4"),
                                ("trig t", "f4"),
+                               ("start t", "f4"),
                                ("waveform", "f4",
+                                tile_waveform_length),
+                               ("raw waveform", "f4",
                                 tile_waveform_length),
                                ("exp x", "f4"),
                                ("exp y", "f4"),
@@ -96,7 +105,10 @@ def dtype_factory(readout_config):
                                 ("pixel y", "f4"),
                                 ("trig z", "f4"),
                                 ("trig t", "f4"),
+                                ("start t", "f4"),
                                 ("waveform", "f4",
+                                 tile_waveform_length),
+                                ("raw waveform", "f4",
                                  tile_waveform_length),
                                 ("exp x", "f4"),
                                 ("exp y", "f4"),
@@ -153,24 +165,30 @@ def main(args):
                            maxshape = (None,))
 
     outfile['pixels']['event id'] = infile['pixels']['event id']
+    outfile['pixels']['tile trigger id'] = infile['pixels']['tile trigger id']
     outfile['pixels']['pixel tpc'] = infile['pixels']['pixel tpc']
     outfile['pixels']['pixel x'] = infile['pixels']['pixel x']
     outfile['pixels']['pixel y'] = infile['pixels']['pixel y']
     outfile['pixels']['trig z'] = infile['pixels']['trig z']
     outfile['pixels']['trig t'] = infile['pixels']['trig t']
+    outfile['pixels']['start t'] = infile['pixels']['start t']
     outfile['pixels']['waveform'] = infile['pixels']['waveform']
+    outfile['pixels']['raw waveform'] = infile['pixels']['raw waveform']
 
     outfile['pixels']['exp x'] = pixel_exp_coords[:,0].cpu().numpy()
     outfile['pixels']['exp y'] = pixel_exp_coords[:,1].cpu().numpy()
     outfile['pixels']['exp z'] = pixel_exp_coords[:,2].cpu().numpy()
 
     outfile['tiles']['event id'] = infile['tiles']['event id']
+    outfile['tiles']['tile trigger id'] = infile['tiles']['tile trigger id']
     outfile['tiles']['tile tpc'] = infile['tiles']['tile tpc']
     outfile['tiles']['tile x'] = infile['tiles']['tile x']
     outfile['tiles']['tile y'] = infile['tiles']['tile y']
     outfile['tiles']['trig z'] = infile['tiles']['trig z']
     outfile['tiles']['trig t'] = infile['tiles']['trig t']
+    outfile['tiles']['start t'] = infile['tiles']['start t']
     outfile['tiles']['waveform'] = infile['tiles']['waveform']
+    outfile['tiles']['raw waveform'] = infile['tiles']['raw waveform']
     
     outfile['tiles']['exp x'] = coarse_exp_coords[:,0].cpu().numpy()
     outfile['tiles']['exp y'] = coarse_exp_coords[:,1].cpu().numpy()
