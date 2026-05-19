@@ -22,79 +22,69 @@ def dtype_factory(readout_config = config.default_readout_params):
     tile_dtype, pixel_dtype : np.dtype, np.dtype
         dtype objects specifying how record info is stored in a binary array.
     """
-    
+
+    # should the output contain the tracked labels
+    # for each recorded waveform?
     truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
+
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
+
+    # should outputs contain the experimental coordinates?
+    # this is especially helpful with multiple TPC volumes
+    position_recording = readout_config['post']['position_recording']
+
+    tile_dtype_list = [("event id", "u4"),
+                       ("tile trigger id", "u4"),
+                       ("tile tpc", "u4"),
+                       ("tile x", "f4"),
+                       ("tile y", "f4"),
+                       ("trig z", "f4"),
+                       ("trig t", "f4"),
+                       ("start t", "f4"),
+                       ("waveform", "f4",
+                        tile_waveform_length),
+                       ("raw waveform", "f4",
+                        tile_waveform_length),
+                       ]
+
+    pixel_dtype_list = [("event id", "u4"),
+                        ("tile trigger id", "u4"),
+                        ("pixel tpc", "u4"),
+                        ("pixel x", "f4"),
+                        ("pixel y", "f4"),
+                        ("trig z", "f4"),
+                        ("trig t", "f4"),
+                        ("start t", "f4"),
+                        ("waveform", "f4",
+                         tile_waveform_length),
+                        ("raw waveform", "f4",
+                         tile_waveform_length),
+                        ]
     
     if truth_tracking:
-        tile_dtype = np.dtype([("event id", "u4"),
-                               ("tile trigger id", "u4"),
-                               ("tile tpc", "u4"),
-                               ("tile x", "f4"),
-                               ("tile y", "f4"),
-                               ("trig z", "f4"),
-                               ("trig t", "f4"),
-                               ("start t", "f4"),
-                               ("waveform", "f4",
-                                tile_waveform_length),
-                               ("raw waveform", "f4",
-                                tile_waveform_length),
-                               ("attribution", "f4",
+        tile_dtype_list.append(("attribution", "f4",
                                 (tile_waveform_length,
-                                 n_labels)),
-                               ("label", "i4", n_labels),
-                               ],
-                              align = True)
+                                 n_labels)))
+        tile_dtype_list.append(("label", "i4", n_labels))
 
-        pixel_dtype = np.dtype([("event id", "u4"),
-                                ("tile trigger id", "u4"),
-                                ("pixel tpc", "u4"),
-                                ("pixel x", "f4"),
-                                ("pixel y", "f4"),
-                                ("trig z", "f4"),
-                                ("trig t", "f4"),
-                                ("start t", "f4"),
-                                ("waveform", "f4",
-                                 tile_waveform_length),
-                                ("raw waveform", "f4",
-                                 tile_waveform_length),
-                                ("attribution", "f4",
+        pixel_dtype_list.append(("attribution", "f4",
                                  (tile_waveform_length,
-                                  n_labels)),
-                                ("label", "i4", n_labels),
-                                ],
-                               align = True)
-    else:
-        tile_dtype = np.dtype([("event id", "u4"),
-                               ("tile trigger id", "u4"),
-                               ("tile tpc", "u4"),
-                               ("tile x", "f4"),
-                               ("tile y", "f4"),
-                               ("trig z", "f4"),
-                               ("trig t", "f4"),
-                               ("start t", "f4"),
-                               ("waveform", "f4",
-                                tile_waveform_length),
-                               ("raw waveform", "f4",
-                                tile_waveform_length),
-                               ],
-                              align = True)
+                                  n_labels)))
+        pixel_dtype_list.append(("label", "i4", n_labels))
 
-        pixel_dtype = np.dtype([("event id", "u4"),
-                                ("tile trigger id", "u4"),
-                                ("pixel tpc", "u4"),
-                                ("pixel x", "f4"),
-                                ("pixel y", "f4"),
-                                ("trig z", "f4"),
-                                ("trig t", "f4"),
-                                ("start t", "f4"),
-                                ("waveform", "f4",
-                                 tile_waveform_length),
-                                ("raw waveform", "f4",
-                                 tile_waveform_length),
-                                ],
-                               align = True)
+    if position_recording:
+        tile_dtype_list.append(("ext pos", "f4",
+                                (tile_waveform_length,
+                                 3)))
+        pixel_dtype_list.append(("ext pos", "f4",
+                                 (pixel_waveform_length,
+                                  3)))
+
+    tile_dtype = np.dtype(tile_dtype_list,
+                          align = True)
+    pixel_dtype = np.dtype(pixel_dtype_list,
+                           align = True)
         
     return tile_dtype, pixel_dtype
 
@@ -121,7 +111,10 @@ def pixel_record_factory(config_manager = config.default_config_manager):
 
     truth_tracking = readout_config['truth_tracking']['enabled']
     n_labels = readout_config['truth_tracking']['n_labels']
+
     tile_waveform_length = readout_config['coarse_tiles']['integration_length']
+
+    position_recording = readout_config['post']['position_recording']
 
     class PixelRecord:
         """
