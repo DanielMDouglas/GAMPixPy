@@ -288,10 +288,16 @@ class ReadoutConfig (AbstractConfig):
         # truth tagging is enabled by default
         if not 'truth_tracking' in self:
             self['truth_tracking'] = {'enabled': True,
-                                      'label': 'pdg'}
+                                      'label': 'pdg',
+                                      'n_labels': 3}
+        else:
+            if not self['truth_tracking']['enabled']:
+                self['truth_tracking']['n_labels'] = 0
+
+        if not 'post' in self:
+            self['post'] = {'position_recording': False}
 
         return
-
 
 default_detector_params = DetectorConfig(os.path.join(gampixpy.__path__[0],
                                                       'detector_config',

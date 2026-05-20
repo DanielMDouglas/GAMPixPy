@@ -142,10 +142,10 @@ def draw_box_from_corners(ax,
     ax.add_collection3d(Poly3DCollection(faces, **kwargs))            
 
 def plot_tile_record(ax,
-                    this_tile_record,
-                    coordinate_manager,
-                    config_manager,
-                    z_offset = 0):
+                     this_tile_record,
+                     coordinate_manager,
+                     config_manager,
+                     z_offset = 0):
     tile_tpc = this_tile_record.tile_tpc
             
     tile_center_xy = this_tile_record.tile_pos

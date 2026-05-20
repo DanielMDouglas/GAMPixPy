@@ -4,7 +4,7 @@ truth_tracking:
   n_labels: 3
 
 post:
-  position_recording: False
+  position_recording: True
 
 coarse_tiles:
   type: coarse_tiles
