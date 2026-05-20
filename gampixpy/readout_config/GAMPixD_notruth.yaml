@@ -2,6 +2,9 @@ truth_tracking:
   enabled: False
   n_labels: 0
 
+post:
+  position_recording: False
+
 coarse_tiles:
   type: coarse_tiles
   pitch:
