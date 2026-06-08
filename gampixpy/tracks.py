@@ -72,12 +72,19 @@ class Track:
 
         """
 
-        coarse_tile_sample_array = np.concat([this_tile_sample.to_numpy()
-                                              for this_tile_sample
-                                              in self.coarse_tiles_samples])
-        pixel_sample_array = np.concat([this_pixel_sample.to_numpy()
-                                        for this_pixel_sample
-                                        in self.pixel_samples])
+        if len(self.coarse_tiles_samples):
+            coarse_tile_sample_array = np.concat([this_tile_sample.to_numpy()
+                                                  for this_tile_sample
+                                                  in self.coarse_tiles_samples])
+        else:
+            coarse_tile_sample_array = np.empty([])
+
+        if len(self.pixel_samples):
+            pixel_sample_array = np.concat([this_pixel_sample.to_numpy()
+                                            for this_pixel_sample
+                                            in self.pixel_samples])
+        else:
+            pixel_sample_array = np.empty([])
 
         return coarse_tile_sample_array, pixel_sample_array
 
