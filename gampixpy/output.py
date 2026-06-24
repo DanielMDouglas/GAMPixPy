@@ -93,11 +93,9 @@ class OutputManager:
         coarse_tile_sample_array, pixel_sample_array = track.to_array()
 
         if event_id:
-            coarse_tile_sample_array[:]['event id'] = event_id
-            pixel_sample_array[:]['event id'] = event_id
+            recorded_event_id = event_id
         else:
-            coarse_tile_sample_array[:]['event id'] = self.n_tracks
-            pixel_sample_array[:]['event id'] = self.n_tracks
+            recorded_event_id = self.n_tracks
         
         n_coarse_hits = coarse_tile_sample_array.shape[0]
         n_coarse_hits_prev = self.outfile['tiles'].shape[0]
@@ -105,11 +103,17 @@ class OutputManager:
         n_pixel_hits = pixel_sample_array.shape[0]
         n_pixel_hits_prev = self.outfile['pixels'].shape[0]
 
-        self.outfile['tiles'].resize((n_coarse_hits+n_coarse_hits_prev,))
-        self.outfile['tiles'][n_coarse_hits_prev:] = coarse_tile_sample_array
+        if n_coarse_hits:
+            coarse_tile_sample_array[:]['event id'] = recorded_event_id
 
-        self.outfile['pixels'].resize((n_pixel_hits+n_pixel_hits_prev,))
-        self.outfile['pixels'][n_pixel_hits_prev:] = pixel_sample_array
+            self.outfile['tiles'].resize((n_coarse_hits+n_coarse_hits_prev,))
+            self.outfile['tiles'][n_coarse_hits_prev:] = coarse_tile_sample_array
+
+        if n_pixel_hits:
+            pixel_sample_array[:]['event id'] = recorded_event_id
+
+            self.outfile['pixels'].resize((n_pixel_hits+n_pixel_hits_prev,))
+            self.outfile['pixels'][n_pixel_hits_prev:] = pixel_sample_array
 
     def _add_meta(self, meta, event_id):
         if event_id:

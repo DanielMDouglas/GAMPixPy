@@ -77,14 +77,14 @@ class Track:
                                                   for this_tile_sample
                                                   in self.coarse_tiles_samples])
         else:
-            coarse_tile_sample_array = np.empty([])
+            coarse_tile_sample_array = np.empty(0)
 
         if len(self.pixel_samples):
             pixel_sample_array = np.concat([this_pixel_sample.to_numpy()
                                             for this_pixel_sample
                                             in self.pixel_samples])
         else:
-            pixel_sample_array = np.empty([])
+            pixel_sample_array = np.empty(0)
 
         return coarse_tile_sample_array, pixel_sample_array
 
