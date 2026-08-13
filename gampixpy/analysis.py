@@ -400,12 +400,12 @@ class SparseTensorConverter (OutputParser):
 
         self.eval_label_mask()
 
-    def get_features_and_indices(self,
-                                 event_id = None,
-                                 label = None,
-                                 label_reduction_method = 'max',
-                                 batch_index = 0,
-                                 **kwargs):
+    def get_pixel_features_and_indices(self,
+                                       event_id = None,
+                                       label = None,
+                                       label_reduction_method = 'max',
+                                       batch_index = 0,
+                                       **kwargs):
 
         data = self.get_data(event_id,
                              label,
@@ -446,16 +446,16 @@ class SparseTensorConverter (OutputParser):
                          *args,
                          **kwargs):
 
-        features, indices = self.get_features_and_indices(*args, **kwargs)
+        pix_features, pix_indices = self.get_pixel_features_and_indices(*args, **kwargs)
         
-        spatial_shape = [torch.max(indices[:,1])+1,
-                         torch.max(indices[:,2])+1,
-                         torch.max(indices[:,3])+1,
-                         ]
+        pix_spatial_shape = [torch.max(pix_indices[:,1])+1,
+                             torch.max(pix_indices[:,2])+1,
+                             torch.max(pix_indices[:,3])+1,
+                             ]
 
-        pixel_st = spconv.SparseConvTensor(features,
-                                           indices,
-                                           spatial_shape,
+        pixel_st = spconv.SparseConvTensor(pix_features,
+                                           pix_indices,
+                                           pix_spatial_shape,
                                            1)
      
         return pixel_st
@@ -497,29 +497,32 @@ class SparseTensorConverter (OutputParser):
             for label in self._label_list:
                 self.label = label
                 depth = self.get_vertex_depth()
-                feats, inds = self.get_features_and_indices(batch_index = im_count)
+                pix_feats, pix_inds = self.get_pixel_features_and_indices(batch_index = im_count)
 
                 if im_count == 0:
                     batch_depth = depth[None]
-                    batch_feats = feats
-                    batch_inds = inds
+                    pix_batch_feats = pix_feats
+                    pix_batch_inds = pix_inds
                 else:
-                    batch_depth = torch.cat((batch_depth, depth[None]))
-                    batch_feats = torch.cat((batch_feats, feats))
-                    batch_inds = torch.cat((batch_inds, inds))
+                    batch_depth = torch.cat((batch_depth,
+                                             depth[None]))
+                    pix_batch_feats = torch.cat((pix_batch_feats,
+                                                 pix_feats))
+                    pix_batch_inds = torch.cat((pix_batch_inds,
+                                                pix_inds))
 
                 im_count += 1
 
                 if im_count == self._batch_size:
-                    spatial_shape = [torch.max(batch_inds[:,1])+1,
-                                     torch.max(batch_inds[:,2])+1,
-                                     torch.max(batch_inds[:,3])+1,
-                                     ]
-                    st = spconv.SparseConvTensor(batch_feats,
-                                                 batch_inds,
-                                                 spatial_shape,
-                                                 self._batch_size)
+                    pix_spatial_shape = [torch.max(pix_batch_inds[:,1])+1,
+                                         torch.max(pix_batch_inds[:,2])+1,
+                                         torch.max(pix_batch_inds[:,3])+1,
+                                         ]
+                    pix_st = spconv.SparseConvTensor(pix_batch_feats,
+                                                     pix_batch_inds,
+                                                     pix_spatial_shape,
+                                                     self._batch_size)
 
-                    yield st, batch_depth
+                    yield pix_st, batch_depth
 
                     im_count = 0
