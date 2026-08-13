@@ -442,9 +442,51 @@ class SparseTensorConverter (OutputParser):
 
         return features, indices
 
-    def get_sparsetensor(self,
-                         *args,
-                         **kwargs):
+    def get_tile_features_and_indices(self,
+                                      event_id = None,
+                                      label = None,
+                                      label_reduction_method = 'max',
+                                      batch_index = 0,
+                                      **kwargs):
+
+        data = self.get_data(event_id,
+                             label,
+                             label_reduction_method)
+        pixels, tiles, meta = data
+
+        rc = self._config_manager.readout_config
+
+        wf_len = rc['coarse_tiles']['integration_length']
+        tile_pitch = rc['coarse_tiles']['pitch']
+        clock_int = rc['coarse_tiles']['clock_interval']
+     
+        batch_size = 1
+     
+        x = torch.tensor(tiles['tile x']).repeat_interleave(wf_len)
+        y = torch.tensor(tiles['tile y']).repeat_interleave(wf_len)
+        t = (torch.tensor(tiles['trig t'])[:,None] + clock_int*torch.arange(wf_len)[None,:]).flatten()
+        q = torch.tensor(tiles['waveform']).flatten()
+
+        features = torch.stack([x, y, t, q]).T
+        
+        x_ind = (x/tile_pitch).int()
+        x_ind -= torch.min(x_ind)
+     
+        y_ind = (y/tile_pitch).int()
+        y_ind -= torch.min(y_ind)
+     
+        t_ind = (t/clock_int).int()
+        t_ind -= torch.min(t_ind)
+     
+        batch_ind = batch_index*torch.ones_like(x_ind)
+        
+        indices = torch.stack([batch_ind, x_ind, y_ind, t_ind]).T
+
+        return features, indices
+
+    def get_pixel_sparsetensor(self,
+                               *args,
+                               **kwargs):
 
         pix_features, pix_indices = self.get_pixel_features_and_indices(*args, **kwargs)
         
@@ -459,6 +501,30 @@ class SparseTensorConverter (OutputParser):
                                            1)
      
         return pixel_st
+
+    def get_tile_sparsetensor(self,
+                              *args,
+                              **kwargs):
+
+        tile_features, tile_indices = self.get_tile_features_and_indices(*args, **kwargs)
+        
+        tile_spatial_shape = [torch.max(tile_indices[:,1])+1,
+                              torch.max(tile_indices[:,2])+1,
+                              torch.max(tile_indices[:,3])+1,
+                              ]
+
+        tile_st = spconv.SparseConvTensor(tile_features,
+                                          tile_indices,
+                                          tile_spatial_shape,
+                                          1)
+     
+        return tile_st
+
+    def get_sparsetensor(self,
+                         *args,
+                         **kwargs):
+
+        return self.get_pixel_sparsetensor(*args, **kwargs)
 
     def get_vertex_depth(self, event_id = None):
         """
