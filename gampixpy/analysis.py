@@ -50,7 +50,6 @@ class OutputParser:
         self._config_manager = self.get_configs()
 
         self._event_id = NULL_EVENT
-        self._label = NULL_LABEL
 
         self._pixel_hit_event_mask = np.zeros_like(self._file_handle['pixels']['event id'],
                                                    dtype = bool)
@@ -59,11 +58,17 @@ class OutputParser:
         self._meta_mask = np.zeros_like(self._file_handle['meta']['event id'],
                                         dtype = bool)
 
-        self._pixel_hit_label_mask = np.empty(0, dtype = bool)
-        self._tile_hit_label_mask = np.empty(0, dtype = bool)
-
         self._event_indices = np.unique(self._file_handle['meta']['event id'])
-        self._label_list = np.empty(0)
+
+        self._config_manager = self.get_configs()
+        self._truth_tracking = self._config_manager.readout_config['truth_tracking']['enabled']
+        
+        if self._truth_tracking:
+            self._label = NULL_LABEL
+
+            self._label_list = np.empty(0)
+            self._pixel_hit_label_mask = np.empty(0, dtype = bool)
+            self._tile_hit_label_mask = np.empty(0, dtype = bool)
 
     @property
     def event_id(self):
@@ -78,7 +83,9 @@ class OutputParser:
         self._event_id = event_id
 
         self.eval_event_mask()
-        self.eval_label_mask()
+
+        if self._truth_tracking:
+            self.eval_label_mask()
 
     @property
     def label(self):
@@ -94,7 +101,8 @@ class OutputParser:
         
         self._label = label
 
-        self.eval_label_mask()
+        if self._truth_tracking:
+            self.eval_label_mask()
 
     @property
     def label_list(self):
@@ -110,6 +118,8 @@ class OutputParser:
 
     def eval_label_mask(self):
         event_pix = self._file_handle['pixels'][self._pixel_hit_event_mask]
+        event_tile = self._file_handle['tiles'][self._tile_hit_event_mask]
+
         event_pix_label = event_pix['label']
         event_pix_attr = event_pix['attribution']
         event_pix_wf = event_pix['waveform']
@@ -122,25 +132,29 @@ class OutputParser:
                                   in zip(event_pix_label,
                                          event_pix_ind)])
         
-        event_tile = self._file_handle['tiles'][self._tile_hit_event_mask]
         event_tile_label = event_tile['label']
         event_tile_attr = event_tile['attribution']
         event_tile_wf = event_tile['waveform']
 
         event_tile_ind = np.argmax(np.sum(event_tile_attr*event_tile_wf[:,:,None],
-                                         axis = 1),
-                                  axis = 1)
+                                          axis = 1),
+                                   axis = 1)
         maj_label_tile = np.array([tile_label[tile_ind]
-                                  for tile_label, tile_ind
-                                  in zip(event_tile_label,
-                                         event_tile_ind)])
+                                   for tile_label, tile_ind
+                                   in zip(event_tile_label,
+                                          event_tile_ind)])
 
         self._label_list = np.unique(maj_label_pix)
-        
-        # need to handle label reduction
-        self._pixel_hit_label_mask = maj_label_pix == self._label
-        self._tile_hit_label_mask = maj_label_tile == self._label
-        
+
+        if self._label == NULL_LABEL:
+            self._pixel_hit_label_mask = np.ones(event_pix.shape, dtype = bool)
+            self._tile_hit_label_mask = np.ones(event_tile.shape, dtype = bool)
+            
+        else:
+            # need to handle label reduction
+            self._pixel_hit_label_mask = maj_label_pix == self._label
+            self._tile_hit_label_mask = maj_label_tile == self._label
+            
     def get_configs(self):
         detector_config = pickle.loads(self._file_handle.attrs['detector config'])
         physics_config = pickle.loads(self._file_handle.attrs['physics config'])
@@ -161,9 +175,14 @@ class OutputParser:
         if label is not None:
             self.label = label
         
-        sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
-        sel_tile_hits = self._file_handle['tiles'][self._tile_hit_event_mask][self._tile_hit_label_mask]
-        sel_meta = self._file_handle['meta'][self._meta_mask]
+        if self._truth_tracking:
+            sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask][self._pixel_hit_label_mask]
+            sel_tile_hits = self._file_handle['tiles'][self._tile_hit_event_mask][self._tile_hit_label_mask]
+            sel_meta = self._file_handle['meta'][self._meta_mask]
+        else:
+            sel_pixel_hits = self._file_handle['pixels'][self._pixel_hit_event_mask]
+            sel_tile_hits = self._file_handle['tiles'][self._tile_hit_event_mask]
+            sel_meta = self._file_handle['meta'][self._meta_mask]
 
         return sel_pixel_hits, sel_tile_hits, sel_meta
 
@@ -171,10 +190,14 @@ class OutputParser:
         # iterate through all outputs
         for event_id in self._event_indices:
             self.event_id = event_id
-            for label in self._label_list:
-                self.label = label
+            if self._truth_tracking:
+                for label in self._label_list:
+                    self.label = label
+                    yield self.get_data()
+            else:
                 yield self.get_data()
 
+                    
 class CrossReferenceParser:
     """
     CrossReferenceParser
